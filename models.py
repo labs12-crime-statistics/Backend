@@ -1,0 +1,39 @@
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from geoalchemy2 import Geometry
+
+
+BASE = declarative_base()
+
+
+class City(BASE):
+    __tablename__ = 'city'
+    id            = Column(Integer, primary_key=True)
+    city          = Column(String, unique=False, nullable=False)
+    state         = Column(String, unique=False, nullable=True)
+    country       = Column(String, unique=False, nullable=False)
+
+
+class Blocks(BASE):
+    __tablename__ = 'block'
+    id            = Column(Integer, primary_key=True)
+    cityid        = Column(Integer, ForeignKey('city.id'), nullable=False)
+    shape         = Column(Geometry(geometry_type='MULTIPOLYGON'), nullable=False)
+    population    = Column(Integer, nullable=False)
+
+
+class Incident(BASE):
+    __tablename__ = 'incident'
+    id            = Column(Integer, primary_key=True)
+    crimetypeid   = Column(Integer, ForeignKey('crimetype.id'), nullable=False)
+    cityid        = Column(Integer, ForeignKey('city.id'), nullable=False)
+    blockid       = Column(Integer, ForeignKey('block.id'), nullable=False)
+    location      = Column(Geometry(geometry_type='POINT'), nullable=False)
+    datetime      = Column(DateTime, nullable=False)
+
+
+class CrimeType(BASE):
+    __tablename__ = 'crimetype'
+    id            = Column(Integer, primary_key=True)
+    category      = Column(String, unique=True, nullable=False)
+    severity      = Column(Integer, nullable=False)
