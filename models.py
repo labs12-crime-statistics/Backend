@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from geoalchemy2 import Geometry
 
 
@@ -12,6 +12,8 @@ class City(BASE):
     city          = Column(String, unique=False, nullable=False)
     state         = Column(String, unique=False, nullable=True)
     country       = Column(String, unique=False, nullable=False)
+    zipcode       = Column(String, unique=False, nullable=False)
+    location      = Column(Geometry(geometry_type='POINT'), nullable=False)
 
 
 class Blocks(BASE):
@@ -36,4 +38,4 @@ class CrimeType(BASE):
     __tablename__ = 'crimetype'
     id            = Column(Integer, primary_key=True)
     category      = Column(String, unique=True, nullable=False)
-    severity      = Column(Integer, nullable=False)
+    severity      = Column(Float, nullable=False)
