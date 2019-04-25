@@ -7,6 +7,7 @@ BASE = declarative_base()
 
 
 class City(BASE):
+    """City model for DB. Has information of cities."""
     __tablename__ = 'city'
     id            = Column(Integer, primary_key=True)
     city          = Column(String, unique=False, nullable=False)
@@ -17,6 +18,8 @@ class City(BASE):
 
 
 class Blocks(BASE):
+    """Block model for DB. Has information of city blocks for a related city
+        id."""
     __tablename__ = 'block'
     id            = Column(Integer, primary_key=True)
     cityid        = Column(Integer, ForeignKey('city.id'), nullable=False)
@@ -25,6 +28,9 @@ class Blocks(BASE):
 
 
 class Incident(BASE):
+    """Incident model for DB. Has information of a specific crime, including
+        where it took place, when it took place, and the type of crime that
+        occurred."""
     __tablename__ = 'incident'
     id            = Column(Integer, primary_key=True)
     crimetypeid   = Column(Integer, ForeignKey('crimetype.id'), nullable=False)
@@ -35,6 +41,8 @@ class Incident(BASE):
 
 
 class CrimeType(BASE):
+    """CrimeType model for DB. Has information of the types of crime, including
+        a general description and the numerical severity of the crime."""
     __tablename__ = 'crimetype'
     id            = Column(Integer, primary_key=True)
     category      = Column(String, unique=True, nullable=False)

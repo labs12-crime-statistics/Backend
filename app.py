@@ -1,3 +1,5 @@
+"""Creates Flask backend application."""
+
 from flask import Flask, request
 from flask_cors import CORS
 from sqlalchemy import create_engine, func
@@ -9,16 +11,21 @@ import json
 from models import *
 
 
+# Create Flask app and allow for CORS
 app     = Flask(__name__)
 CORS(app)
+
+# Connect to DB and create session with DB
 DB_URI  = config('DB_URI')
 ENGINE  = create_engine(DB_URI)
 Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
 
 
+# Endpoints for backend
 @app.route("/cities", methods=["GET"])
 def get_cities():
+    """Get all cities in DB with respective id and user friendly name."""
     cities = []
     for instance in SESSION.query(City).all():
         if instance.state:
@@ -28,7 +35,7 @@ def get_cities():
                     instance.city,
                     instance.state,
                     instance.country
-                )
+                ).title()
             })
         else:
             cities.append({
@@ -36,16 +43,28 @@ def get_cities():
                 "string": "{}, {}".format(
                     instance.city,
                     instance.country
-                )
+                ).title()
             })
     return json.dumps({"cities": cities, "error": "none"})
 
 
 @app.route("/city/<int:cityid>/shapes", methods=["GET"])
 def get_city_shapes(cityid):
+    """Get all blocks for a specific City id with their respective id, shape
+        and the city center coordinates."""
     if SESSION.query(City).filter(City.id == cityid).count() > 0:
-        blocks = [{"id": block.id, "shape": wkb.loads(block.shape.data.tobytes())["coordinates"]} for block in SESSION.query(Blocks).filter(Blocks.cityid == cityid).all()]
-        return json.dumps({"error": "none", "blocks": blocks, "citylocation": wkb.loads(SESSION.query(City.location).filter(City.id == cityid).one()[0].data.tobytes())["coordinates"]})
+        citycoords_req = SESSION.query(City.location).filter(City.id == cityid)
+        citycoords_bytes = citycoords_req.one()[0].data.tobytes()
+        citycoords = wkb.loads(citycoords_bytes)["coordinates"]
+        blocks = [{
+            "id": block.id,
+            "shape": wkb.loads(block.shape.data.tobytes())["coordinates"]
+        } for block in
+            SESSION.query(Blocks).filter(Blocks.cityid == cityid).all()]
+        return json.dumps({
+            "error": "none",
+            "blocks": blocks,
+            "citylocation": citycoords})
     return json.dumps({"error": "Incorrect city id value."})
 
 
@@ -126,4 +145,5 @@ def get_city_shapes(cityid):
 #     data = request.form.get("data")
 
 if __name__ == "__main__":
+    # Run server
     app.run(host='0.0.0.0', port=config(PORT), debug=True)
