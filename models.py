@@ -1,3 +1,5 @@
+"""Contains models for DB."""
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from geoalchemy2 import Geometry

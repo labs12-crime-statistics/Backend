@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import sessionmaker
 from decouple import config
+from shapely import wkb, wkt
 import pandas as pd
 from models import *
 import json
@@ -255,38 +256,46 @@ def add_incidents_chicago(cityid):
     Args:
         cityid (int): id of city existing in city table
     """
+    
+    def find_blockid(x):
+        geom = wkt.loads(x)
+        for k in block_dict:
+            if block_dict[k].contains(geom):
+                return k
+        return None
+
+    def find_crimetypeid(x):
+        for k in crimetype_dict:
+            if crimetype_dict[k] == x:
+                return k
+        return None
+
+    
     incidents = pd.read_csv("incidents.csv")
     incidents = incidents.loc[:,["Date", "Primary Type", "Description", "Latitude", "Longitude"]]
     incidents = incidents.dropna()
     incidents.loc[:,"crimefull"] = incidents[["Primary Type", "Description"]].apply(lambda x: " | ".join(x), axis=1)
     incidents.loc[:,"locfull"] = incidents[["Longitude", "Latitude"]].apply(lambda x: "POINT({})".format(" ".join([str(y) for y in x])), axis=1)
-    blockids = []
-    for loc in incidents["locfull"].values:
-        res = SESSION.execute(text("""SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT(:point))"""), {"point": loc}).fetchone()
-        if res:
-            blockids.append(res[0])
-        else:
-            blockids.append(None)
-    incidents.loc[:,"crimetypeid"] = blockids
-    crimetypeids = []
-    for crime in incidents["crimefull"].values:
-        res = SESSION.execute(text("""SELECT id FROM crimetype WHERE :crimetype = category"""), {"crimetype": crime}).fetchone()
-        if res:
-            crimetypeids.append(res[0])
-        else:
-            crimetypeids.append(None)
-    incidents.loc[:,"blockid"] = crimetypeids
-    incidents = incidents.dropna()
-    SESSION.add_all([Incident(crimetypeid=incidents.loc[i,"crimetypeid"], cityid=cityid, blockid=incidents.loc[i,"blockid"], location=incidents.loc[i,"lockfull"], datetime=datetime.datetime(incidents.loc[i,"datetime"])) for i in incidents.index.values])
+    crimetypes = SESSION.query(CrimeType).all()
+    crimetype_dict = {}
+    for c in crimetypes:
+        crimetype_dict[c.id] = c.category
+    blocks = SESSION.query(Blocks).all()
+    block_dict = {}
+    for b in blocks:
+        block_dict[b.id] = wkb.loads(b.shape.data.tobytes())
+    incidents.loc[:,"crimetypeid"] = incidents["crimefull"].apply(find_crimetypeid)
+    incidents.loc[:,"blockid"] = incidents["locfull"].apply(find_blockid)
+    SESSION.add_all([Incident(crimetypeid=incidents.loc[i,"crimetypeid"], cityid=cityid, blockid=incidents.loc[i,"blockid"], location=incidents.loc[i,"locfull"], datetime=datetime.datetime(incidents.loc[i,"Date"])) for i in incidents.index.values])
     SESSION.flush()
 
 
 if __name__ == "__main__":
     # Run through all functions for creating info
     cityid = 1
-    reset_tables()
-    cityid = add_city_chicago()
-    add_blocks_chicago(cityid)
-    add_crimetypes()
+    # reset_tables()
+    # cityid = add_city_chicago()
+    # add_blocks_chicago(cityid)
+    # add_crimetypes()
     add_incidents_chicago(cityid)
     SESSION.commit()

@@ -23,6 +23,11 @@ SESSION = Session()
 
 
 # Endpoints for backend
+@app.route("/", methods=["GET"])
+def health_check():
+    return json.dumps({'error': 'none', 'data': 'Health check good.'})
+
+
 @app.route("/cities", methods=["GET"])
 def get_cities():
     """Get all cities in DB with respective id and user friendly name."""
@@ -68,81 +73,43 @@ def get_city_shapes(cityid):
     return json.dumps({"error": "Incorrect city id value."})
 
 
-# @app.route("/city/<int:cityid>/data", methods=["GET"])
-# def get_city_shapes(cityid):
-#     startdate  = request.args.get("startdate")
-#     enddate    = request.args.get("enddate")
-#     dotw       = request.args.get("dotw")
-#     crimetypes = request.args.get("crimetypes")
+@app.route("/city/<int:cityid>/data", methods=["GET"])
+def get_city_shapes(cityid):
+    """Get values for specified parameters and city."""
+    config_dict["s_date"] = datetime.datetime(request.args.get("s_d","1/1900"))
+    config_dict["e_date"] = datetime.datetime(request.args.get("e_d","12/2099"))
+    config_dict["s_time"] = int(request.args.get("s_t","0"))
+    config_dict["e_time"] = int(request.args.get("e_t","24"))
+    blockid = int(request.args.get("blockid","-1"))
+    dotw = request.args.get("dotw","")
+    crimetypes = request.args.get("crimetypes","")
 
-#     return json.dumps({
-#         "cityid": cityid,
-#         "start": startdate,
-#         "end": enddate,
-#         "dotw": dotw,
-#         "types": crimetypes
-#     })
+    query = """SELECT SUM(crimetype.severity)
+        FROM crimetype, instance
+        WHERE
+            instance.datetime >= :s_date::date
+            AND instance.datetime <= :e_date::date
+            AND EXTRACT(hour FROM instance.datetime) >= :s_time
+            AND EXTRACT(hour FROM instance.datetime) >= :e_time
+    """
+    if dotw != "":
+        config_dict["dotw"] = [int(x) for x in dotw.split(",")]
+        query += "AND EXTRACT(DOW FROM instance.datetime) IN :dotw\n"
+    if crimetypes != "":
+        config_dict["crimetypes"] = crimetypes.split(",")
+        query += """AND (SELECT crimetype.category 
+                            FROM instance, crimetype
+                            WHERE instance.crimetypeid = crimetype.id)
+                    IN :crimetypes\n"""
+    if blockid != -1:
+        config_dict["blockid"] = blockid
+        query += "AND instance.blockid != :blockid\n"
+    query += "GROUP BY instance.blockid;"
+    res = SESSION.execute(text(query), config_dict).fetchall()
+    print(res)
 
+    return json.dumps({})
 
-# @app.route("/add/city", methods=["POST"]):
-# def add_data():
-#     data = request.form.get("data")
-#     if data:
-#         data = json.loads(data)
-#         for city in data:
-#             if "city" in city and "state" in city and "country" in city and "zipcode" in zipcode:
-#                 if SESSION.query(City).filter(
-#                         City.city == city["city"],
-#                         City.state == city["state"],
-#                         City.country == city["country"],
-#                         City.zipcode == city["zipcode"]
-#                     ).count() > 0:
-#                     city = SESSION.query(City).filter(
-#                         City.city == city["city"],
-#                         City.state == city["state"],
-#                         City.country == city["country"],
-#                         City.zipcode == city["zipcode"]
-#                     ).one()
-#                 else:
-#                     city = City(city["city"], city["state"], city["country"], city["zipcode"])
-#                     SESSION.add(city)
-#                     SESSION.refresh(city)
-#             elif "city" in city and "country" in city and "zipcode" in zipcode:
-#                 if SESSION.query(City).filter(
-#                         City.city == city["city"],
-#                         City.country == city["country"],
-#                         City.zipcode == city["zipcode"]
-#                     ).count() > 0:
-#                     city = SESSION.query(City).filter(
-#                         City.city == city["city"],
-#                         City.country == city["country"],
-#                         City.zipcode == city["zipcode"]
-#                     ).one()
-#                 else:
-#                     city = City(city["city"], city["country"], city["zipcode"])
-#                     SESSION.add(city)
-#                     SESSION.refresh(city)
-#             blocks = []
-#             for block in city["blocks"]:
-#                 str_poly = "MULTIPOLYGON("
-#                 for i0 in block["coordinates"]:
-#                     str_poly += "("
-#                     for ind, i1 in enumerate(i0):
-#                         if ind > 0:
-#                             str_poly += ","    
-#                         str_poly += "("+",".join(["{} {}".format(j[0], j[1]) for j in i1])+")"
-#                     str_poly += ")"
-#                 str_poly += ")"
-#                 blocks.append(Blocks(cityid=city.id, shape=str_poly, population=block["population"]))
-#             SESSION.add_all(blocks)
-#             SESSION.commit()
-#         return json.dumps({"success": "true", "error": "none"})
-
-
-
-# @app.route("/add/data", methods=["POST"]):
-# def add_data():
-#     data = request.form.get("data")
 
 if __name__ == "__main__":
     # Run server
