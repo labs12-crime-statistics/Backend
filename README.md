@@ -16,8 +16,6 @@
 | [/cities](#cities-get) | GET | Get all cities in database. | &#9744; |
 | [/city/{cityid}/shapes](#city-shapes-get) | GET | Get all blocks for cityid. | &#9744; |
 | [/city/{cityid}/data](#city-data-get) | GET | Get all data for cityid. | &#9744; |
-| [/add/city](#add-city-post) | POST | Add city data to DB. | &#9745; |
-| [/add/data](#add-data-post) | POST | Add instance data to DB. | &#9745; |
 
 ### Health Check
 
@@ -121,83 +119,5 @@
         {indexval}: {date},
         ...
     }
-}
-```
-
-## Add
-
-### Add City [POST]
-
-#### Input Model
-
-##### FORM[data (json)]
-
-```json
-[
-    {
-        "city": {city},
-        ["state"]: {state},
-        "country": {country},
-        "shapes": [
-            {
-                "id": {blockid},
-                "coordinates": [
-                    [
-                        [{latitude}, {longitude}],
-                    ...],
-                ...],
-                "population": {population}
-            },
-            ...
-        ]
-    },
-    ...
-]
-```
-
-#### Return Model
-
-##### 200
-
-```json
-{
-    "error": 'none',
-    "committed": 'true'
-}
-```
-
-### Add Data [POST]
-
-#### Input Model
-
-##### FORM[data (json)]
-
-```json
-[
-    {
-        "city": {city},
-        ["state"]: {state},
-        "country": {country},
-        "instances": [
-            {
-                "location": [{latitude}, {longitude}],
-                "crime": {crimetype},
-                "datetime": {datetime}
-            },
-            ...
-        ]
-    },
-    ...
-]
-```
-
-#### Return Model
-
-##### 200
-
-```json
-{
-    "error": "none",
-    "committed": "true"
 }
 ```
