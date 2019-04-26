@@ -26,8 +26,8 @@
 ##### 200
 ```json
 {
-    'error': 'none',
-    'data': 'Health check good.'
+    "error": "none",
+    "data": "Health check good."
 }
 ```
 
@@ -35,17 +35,23 @@
 
 ### Cities [GET]
 
+#### Input Parameters
+
+| Parameter | Definition | Example |
+|---|---|---|
+| `q` | search term | `q=chicago` |
+
 #### Return Model
 
 ##### 200
 
 ```json
 {
-    'error': 'none',
-    'cities': [
+    "error": "none",
+    "cities": [
         {
-            'id': {cityid},
-            'string': {cityname}
+            "id": {cityid},
+            "string": {cityname}
         },
         ...
     ]
@@ -60,11 +66,11 @@
 
 ```json
 {
-    'error': 'none',
-    'blocks': [
+    "error": "none",
+    "blocks": [
         {
-            'id': {blockid},
-            'shape': [
+            "id": {blockid},
+            "shape": [
                 [
                     [{latitude}, {longitude}],
                 ...],
@@ -72,11 +78,23 @@
         },
         ...
     ],
-    'citycoords': [{longitude}, {latitude}]
+    "citycoords": [{longitude}, {latitude}]
 }
 ```
 
 ### City Data [GET]
+
+#### Input Parameters
+
+| Parameter | Definition | Example |
+|---|---|---|
+| `s_d` | start date | `s_d=2%2F2012` |
+| `e_d` | end date | `e_d=12%2F2019` |
+| `s_t` | start time | `s_t=10` |
+| `e_t` | end time | `e_t=20` |
+| `blockid` | block id | `blockid=72` |
+| `dotw` | days of the week | `dotw=0,3,4,5` |
+| `crimetypes` | types of crime | `crimetypes=CRIMINAL%20DAMAGE%20%7C%20TO%20VEHICLE,THEFT%20%7C%20FROM%20BUILDING` |
 
 #### Return Model
 
@@ -84,21 +102,25 @@
 
 ```json
 {
-    'error': 'none',
-    'main': {
-        'blockid': {blockid},
-        'values_time': [{{key}: {value}},...],
-        'values_month': [{{key}: {value}},...],
-        'values_dow': [{{key}: {value}},...],
-        'values_type': [{{key}: {value}},...]
+    "error": "none",
+    "main": {
+        "blockid": {blockid},
+        "values_time": [{{key}: {value}},...],
+        "values_month": [{{key}: {value}},...],
+        "values_dow": [{{key}: {value}},...],
+        "values_type": [{{key}: {value}},...]
     },
-    'other': [
+    "other": [
         {
-            'blockid': {blockid},
-            'values': []
+            "blockid": {blockid},
+            "values": [{value},...]
         },
         ...
-    ]
+    ],
+    "timeline": {
+        {indexval}: {date},
+        ...
+    }
 }
 ```
 
@@ -108,23 +130,23 @@
 
 #### Input Model
 
-FORM[data]
+##### FORM[data (json)]
 
 ```json
 [
     {
-        'city': {city},
-        ['state']: {state},
-        'country': {country},
-        'shapes': [
+        "city": {city},
+        ["state"]: {state},
+        "country": {country},
+        "shapes": [
             {
-                'id': {blockid},
-                'coordinates': [
+                "id": {blockid},
+                "coordinates": [
                     [
                         [{latitude}, {longitude}],
                     ...],
                 ...],
-                'population': {population}
+                "population": {population}
             },
             ...
         ]
@@ -139,8 +161,8 @@ FORM[data]
 
 ```json
 {
-    'error': 'none',
-    'committed': 'true'
+    "error": 'none',
+    "committed": 'true'
 }
 ```
 
@@ -148,23 +170,19 @@ FORM[data]
 
 #### Input Model
 
-FORM[data]
+##### FORM[data (json)]
 
 ```json
 [
     {
-        'city': {city},
-        ['state']: {state},
-        'country': {country},
-        'shapes': [
+        "city": {city},
+        ["state"]: {state},
+        "country": {country},
+        "instances": [
             {
-                'id': {blockid},
-                'coordinates': [
-                    [
-                        [{latitude}, {longitude}],
-                    ...],
-                ...],
-                'population': {population}
+                "location": [{latitude}, {longitude}],
+                "crime": {crimetype},
+                "datetime": {datetime}
             },
             ...
         ]
@@ -179,7 +197,7 @@ FORM[data]
 
 ```json
 {
-    'error': 'none',
-    'committed': 'true'
+    "error": "none",
+    "committed": "true"
 }
 ```
