@@ -22,7 +22,7 @@
 #### Return Model
 
 ##### 200
-```json
+```js
 {
     "error": "none",
     "data": "Health check good."
@@ -33,7 +33,13 @@
 
 ### Cities [GET]
 
-#### Input Parameters
+#### URL Parameters
+
+| Parameter | Definition | Example |
+|---|---|---|
+| `cityid` | id of city | `/city/1/data` |
+
+#### Query Parameters
 
 | Parameter | Definition | Example |
 |---|---|---|
@@ -43,7 +49,7 @@
 
 ##### 200
 
-```json
+```js
 {
     "error": "none",
     "cities": [
@@ -62,7 +68,7 @@
 
 ##### 200
 
-```json
+```js
 {
     "error": "none",
     "blocks": [
@@ -82,7 +88,13 @@
 
 ### City Data [GET]
 
-#### Input Parameters
+#### URL Parameters
+
+| Parameter | Definition | Example |
+|---|---|---|
+| `cityid` | id of city | `/city/7/data` |
+
+#### Query Parameters
 
 | Parameter | Definition | Example |
 |---|---|---|
@@ -92,21 +104,30 @@
 | `e_t` | end time | `e_t=20` |
 | `blockid` | block id | `blockid=72` |
 | `dotw` | days of the week | `dotw=0,3,4,5` |
-| `crimetypes` | types of crime | `crimetypes=CRIMINAL%20DAMAGE%20%7C%20TO%20VEHICLE,THEFT%20%7C%20FROM%20BUILDING` |
+| `crimetypes` | primary type and descriptions of crime | `crimetypes=CRIMINAL%20DAMAGE%20%7C%20TO%20VEHICLE,THEFT%20%7C%20FROM%20BUILDING` |
+| `crimeprim` | primary types of crime | `crimeprim=ARSON,ASSAULT,BATTERY` |
 
 #### Return Model
 
 ##### 200
 
-```json
+```js
 {
     "error": "none",
     "main": {
         "blockid": {blockid},
-        "values_time": [{{key}: {value}},...],
-        "values_month": [{{key}: {value}},...],
-        "values_dow": [{{key}: {value}},...],
-        "values_type": [{{key}: {value}},...]
+        "values_time": [
+            {{key}: {value}},
+        ...],
+        "values_month": [
+            {{key}: {value}}
+        ,...],
+        "values_dow": [
+            {{key}: {value}}
+        ,...],
+        "values_type": [
+            {{key}: {value}},
+        ...]
     },
     "other": [
         {
@@ -115,9 +136,12 @@
         },
         ...
     ],
-    "timeline": {
-        {indexval}: {date},
+    "timeline": [
+        {
+            "month": {month},
+            "year": {year}
+        },
         ...
-    }
+    ]
 }
 ```
