@@ -7,8 +7,10 @@ from sqlalchemy.orm import sessionmaker
 from decouple import config
 from geomet import wkb
 import pandas as pd
+
 import json
 import datetime
+import math
 
 from models import *
 
@@ -76,16 +78,19 @@ def get_city_shapes(cityid):
             "shape": wkb.loads(block.shape.data.tobytes())["coordinates"]
         } for block in
             SESSION.query(Blocks).filter(Blocks.cityid == cityid).all()]
-        return json.dumps({
-            "error": "none",
-            "blocks": blocks,
-            "citylocation": citycoords})
+        return Response(
+            response=json.dumps({
+                "error": "none",
+                "blocks": blocks,
+                "citylocation": citycoords}),
+            status=200,
+            mimetype='application/json'
+        )
     return Response(
         response=json.dumps({"error": "Incorrect city id value."}),
-        status=200,
+        status=404,
         mimetype='application/json'
     )
-
 
 @app.route("/city/<int:cityid>/data", methods=["GET"])
 def get_city_data(cityid):
@@ -101,6 +106,20 @@ def get_city_data(cityid):
     crimetypes = request.args.get("crimetypes","")
     crimeprim = request.args.get("crimeprim","")
 
+    query = """SELECT MAX(severity)
+        FROM (
+            SELECT SUM(severity)/SUM(block.population) AS severity
+            FROM incident
+            INNER JOIN block ON incident.blockid = block.id INNER JOIN crimetype ON incident.crimetypeid = crimetype.id AND block.population > 0
+            GROUP BY
+                blockid,
+                EXTRACT(year FROM datetime),
+                EXTRACT(month FROM datetime),
+                EXTRACT(dow FROM datetime),
+                EXTRACT(hour FROM datetime)
+        ) AS categories;"""
+    severity = SESSION.execute(text(query)).fetchone()[0] * 24 * 7
+
     query_base   = " FROM incident "
     query_city   = "incident.cityid = :cityid"
     query_date   = "datetime >= :sdt AND datetime <= :edt"
@@ -109,17 +128,21 @@ def get_city_data(cityid):
     query_dotw   = "EXTRACT(dow FROM datetime) = ANY(:dotw)"
     query_crmtyp = "category = ANY(:crimetypes)"
     query_crmprm = "SPLIT_PART(category, ' | ', 1) = ANY(:crimeprim)"
+    query_pop    = "block.population > 0"
     query_join   = "INNER JOIN block ON incident.blockid = block.id INNER JOIN crimetype ON incident.crimetypeid = crimetype.id AND "
     q_base_end   = "blockid, EXTRACT(year FROM datetime), EXTRACT(month FROM datetime)"
     q_date_end   = "EXTRACT(year FROM datetime), EXTRACT(month FROM datetime)"
     q_time_end   = "EXTRACT(hour FROM datetime)"
     q_dotw_end   = "EXTRACT(dow FROM datetime)"
     q_crmtyp_end = "category"
+    mult = 24.0 / min(config_dict["etime"] - config_dict["stime"] + 1, 24)
 
-    base_list = {"city": query_city, "date": query_date, "time": query_time}
+
+    base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
     if dotw != "":
         config_dict["dotw"] = [int(x) for x in dotw.split(",")]
         base_list["dow"] = query_dotw
+        mult *= 7 / len(config_dict["dotw"])
     if crimeprim != "" and crimetypes != "":
         config_dict["crimetypes"] = crimetypes.split(",")
         config_dict["crimeprim"] = crimeprim.split(",")
@@ -133,30 +156,40 @@ def get_city_data(cityid):
     if blockid != -1:
         config_dict["blockid"] = blockid
 
+    dow = {
+        0: "M",
+        1: "Tu",
+        2: "W",
+        3: "Th",
+        4: "F",
+        5: "Sa",
+        6: "Su"
+    }
+
     funcs = {
-        "map": lambda res: [{"severity": r[0], "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
-        "date": lambda res: [{"severity": r[0], "month": int(r[2]), "year": int(r[1])} for r in res],
-        "time": lambda res: [{"severity": r[0], "hour": int(r[1])} for r in res],
-        "dotw": lambda res: [{"severity": r[0], "dow": int(r[1])} for r in res],
-        "crmtyp": lambda res: [{"count": r[0], "category": r[1]} for r in res],
-        "date_all": lambda res: [{"severity": r[0], "month": int(r[2]), "year": int(r[1])} for r in res],
-        "time_all": lambda res: [{"severity": r[0], "hour": int(r[1])} for r in res],
-        "dotw_all": lambda res: [{"severity": r[0], "dow": int(r[1])} for r in res],
-        "crmtyp_all": lambda res: [{"count": r[0], "category": r[1]} for r in res]
+        "map": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
+        "date": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "month": int(r[2]), "year": int(r[1])} for r in res],
+        "time": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "hour": int(r[1])} for r in res],
+        "dotw": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "dow": dow[int(r[1])]} for r in res],
+        "crmtyp": lambda res: [{"count": r[0] * 100000, "category": r[1]} for r in res],
+        "date_all": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "month": int(r[2]), "year": int(r[1])} for r in res],
+        "time_all": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "hour": int(r[1])} for r in res],
+        "dotw_all": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "dow": dow[int(r[1])]} for r in res],
+        "crmtyp_all": lambda res: [{"count": r[0] * 100000, "category": r[1]} for r in res],
     }
     
     charts = {
-        "map": "SELECT SUM(severity), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
-        "date_all": "SELECT SUM(severity), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "date"]) + " GROUP BY " + q_date_end,
-        "time_all": "SELECT SUM(severity), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end,
-        "dotw_all": "SELECT SUM(severity), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end,
-        "crmtyp_all": "SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end
+        "map": "SELECT SUM(severity)/SUM(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
+        "date_all": "SELECT SUM(severity)/SUM(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "date"]) + " GROUP BY " + q_date_end,
+        "time_all": "SELECT SUM(severity)/SUM(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end,
+        "dotw_all": "SELECT SUM(severity)/SUM(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end,
+        "crmtyp_all": "SELECT CAST(COUNT(*) AS FLOAT)/SUM(block.population), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end
     }
     if blockid != -1:
-        charts["date"] = "SELECT SUM(severity), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "date"]+[query_block]) + " GROUP BY " + q_date_end
-        charts["time"] = "SELECT SUM(severity), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end
-        charts["dotw"] = "SELECT SUM(severity), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end
-        charts["crmtyp"] = "SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end
+        charts["date"] = "SELECT SUM(severity)/SUM(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "date"]+[query_block]) + " GROUP BY " + q_date_end
+        charts["time"] = "SELECT SUM(severity)/SUM(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end
+        charts["dotw"] = "SELECT SUM(severity)/SUM(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end
+        charts["crmtyp"] = "SELECT CAST(COUNT(*) AS FLOAT)/SUM(block.population), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end
     results = {}
     for k in charts:
         res = SESSION.execute(text(charts[k]), config_dict).fetchall()
@@ -186,7 +219,7 @@ def get_city_data(cityid):
         })
     
     result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date_all"]]
-    result["main"]["all"]["values_time"] = [{"x": c["hour"], "y": c["severity"]} for c in results["time_all"]]
+    result["main"]["all"]["values_time"] = sorted([{"x": c["hour"], "y": c["severity"]} for c in results["time_all"]], key=lambda x: x.get("x"))
     result["main"]["all"]["values_dow"] = [{"x": c["dow"], "y": c["severity"]} for c in results["dotw_all"]]
 
     data = {}
@@ -202,14 +235,14 @@ def get_city_data(cityid):
     for k1 in data:
         t_d = {"name": k1, "children": []}
         for k2 in data[k1]:
-            t_d["children"].append({"name": "{} | {}".format(k1,k2), "loc": data[k1][k2]})
+            t_d["children"].append({"name": "{} | {}".format(k1,k2), "count": data[k1][k2]})
         n_data["children"].append(t_d)
     result["main"]["all"]["values_type"] = n_data
 
     if blockid != -1:
         result["main"][blockid] = {}
         result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date"]]
-        result["main"][blockid]["values_time"] = [{"x": c["hour"], "y": c["severity"]} for c in results["time"]]
+        result["main"][blockid]["values_time"] = sorted([{"x": c["hour"], "y": c["severity"]} for c in results["time"]], key=lambda x: x.get("x"))
         result["main"][blockid]["values_dow"] = [{"x": c["dow"], "y": c["severity"]} for c in results["dotw"]]
 
         data = {}
@@ -225,7 +258,7 @@ def get_city_data(cityid):
         for k1 in data:
             t_d = {"name": k1, "children": []}
             for k2 in data[k1]:
-                t_d["children"].append({"name": "{} | {}".format(k1,k2), "loc": data[k1][k2]})
+                t_d["children"].append({"name": "{} | {}".format(k1,k2), "count": data[k1][k2]})
             n_data["children"].append(t_d)
         result["main"][blockid]["values_type"] = n_data
     return Response(
