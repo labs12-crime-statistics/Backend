@@ -222,7 +222,7 @@ def get_city_data(cityid):
         locdesc1 = request.args.get("locdesc1","").split(",")
         locdesc2 = request.args.get("locdesc2","").split(",")
         locdesc3 = request.args.get("locdesc3","").split(",")
-        new_job = q.enqueue(get_data, config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
+        new_job = q.enqueue(get_data, config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
         output = get_status(new_job)
         return Response(
             response=json.dumps(output),
