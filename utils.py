@@ -61,7 +61,7 @@ def get_data_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc
         data.to_csv(f, index=False)
         return f.getvalue()
 
-def get_data():
+def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query = """SELECT MAX(categories.severity)
         FROM (
             SELECT SUM(crimetype.severity)/AVG(block.population) AS severity
