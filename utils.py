@@ -179,7 +179,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         })
     
     result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date_all"]]
-    all_times = [{"x": i, "y": 0.0} for i in range(23)]
+    all_times = [{"x": i, "y": 0.0} for i in range(24)]
     for c in results["time_all"]:
         all_times[c["hour"]]["y"] = c["severity"]
     all_times = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
