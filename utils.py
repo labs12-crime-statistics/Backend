@@ -179,8 +179,16 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         })
     
     result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date_all"]]
-    result["main"]["all"]["values_time"] = sorted([{"x": c["hour"], "y": c["severity"]} for c in results["time_all"]], key=lambda x: x.get("x"))
-    result["main"]["all"]["values_dow"] = [{"x": c["dow"], "y": c["severity"]} for c in results["dotw_all"]]
+    all_times = [{"x": i, "y": 0.0} for i in range(23)]
+    for c in results["time_all"]:
+        all_times[c["hour"]]["y"] = c["severity"]
+    all_times = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
+    result["main"]["all"]["values_time"] = all_times
+    all_dows = [{"x": i, "y": 0.0} for i in range(7)]
+    for c in results["dotw_all"]:
+        all_dows[c["dow"]]["y"] = c["severity"]
+    all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 24, "y": doall_dowsws[0]["y"]}, {"x": 25, "y": all_dows[1]["y"]}]
+    result["main"]["all"]["values_dow"] = all_dows
 
     data = {}
     for r in results["crmtyp_all"]:
@@ -218,8 +226,16 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     if blockid != -1:
         result["main"][blockid] = {}
         result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date"]]
-        result["main"][blockid]["values_time"] = sorted([{"x": c["hour"], "y": c["severity"]} for c in results["time"]], key=lambda x: x.get("x"))
-        result["main"][blockid]["values_dow"] = [{"x": c["dow"], "y": c["severity"]} for c in results["dotw"]]
+        times = [{"x": i, "y": 0.0} for i in range(23)]
+        for c in results["time_all"]:
+            times[c["hour"]]["y"] = c["severity"]
+        times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
+        result["main"][blockid]["values_time"] = times
+        dows = [{"x": i, "y": 0.0} for i in range(7)]
+        for c in results["dotw_all"]:
+            dows[c["dow"]]["y"] = c["severity"]
+        dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 24, "y": dows[0]["y"]}, {"x": 25, "y": dows[1]["y"]}]
+        result["main"][blockid]["values_dow"] = dows
 
         data = {}
         for r in results["crmtyp"]:
