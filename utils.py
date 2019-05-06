@@ -225,7 +225,6 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 t_d["children"].append(t_e)
             n_data["children"].append(t_d)
         result["main"][blockid]["values_locdesc"] = n_data
-    
     q = SESSION.execute("INSERT INTO job (result) VALUES ('{}') RETURNING id;".format(json.dumps(result)))
     jobid = q.fetchone()[0]
     SESSION.commit()
