@@ -1,6 +1,7 @@
 from decouple import config
 import redis
 from rq import Worker, Queue, Connection
+from utils import get_data
 
 listen = ['high', 'default', 'low']
 
