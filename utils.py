@@ -8,6 +8,7 @@ import json
 import datetime
 import math
 import io
+import sys
 
 from models import *
 
@@ -18,6 +19,8 @@ Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
 
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
+    print(json.dumps(config_dict))
+    sys.stdout.flush()
     query = """SELECT MAX(categories.severity)
         FROM (
             SELECT SUM(crimetype.severity)/AVG(block.population) AS severity
