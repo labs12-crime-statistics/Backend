@@ -85,3 +85,11 @@ class LocationDescriptionType(BASE):
     key2          = Column(String, nullable=False)
     key3          = Column(String, nullable=False)
     incidents     = relationship("Incident", back_populates="locationdesc")
+
+
+class Job(BASE):
+    """Job model for DB and redis. Has information on the status and result of
+        redis queue job."""
+    __tablename__ = 'job'
+    id            = Column(BigInteger, primary_key=True)
+    result        = Column(String, nullable=False)
