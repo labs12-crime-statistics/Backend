@@ -19,6 +19,7 @@ Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
 
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
+    sys.stderr.write(json.dumps(config_dict))
     query = """SELECT MAX(categories.severity)
         FROM (
             SELECT SUM(crimetype.severity)/AVG(block.population) AS severity
@@ -110,7 +111,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     for k in charts:
         res = SESSION.execute(text(charts[k]), config_dict).fetchall()
         results[k] = funcs[k](res)
-    
+    sys.stderr.write(json.dumps(results))
     result = {
         "error": "none",
         "main": {
