@@ -16,7 +16,7 @@ import math
 import io
 
 from models import *
-from utils import get_data, get_data_download
+from utils import get_data
 
 
 # Create Flask app and allow for CORS
