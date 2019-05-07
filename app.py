@@ -147,9 +147,7 @@ def download_data(cityid):
     locdesc1 = request.args.get("locdesc1","").split(",")
     locdesc2 = request.args.get("locdesc2","").split(",")
     locdesc3 = request.args.get("locdesc3","").split(",")
-    new_job = q.enqueue(get_data_download, config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
-    output = get_status(new_job)
-
+    
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
     query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
