@@ -226,10 +226,10 @@ def get_city_data(cityid):
     else:
         config_dict = {}
         config_dict["cityid"] = cityid
-        config_dict["sdt"] = request.args.get("s_d","01/01/1900")
-        config_dict["edt"] = request.args.get("e_d","01/01/2100")
-        config_dict["stime"] = int(request.args.get("s_t","0"))
-        config_dict["etime"] = int(request.args.get("e_t","23"))
+        config_dict["sdt"] = request.args.get("sdt","01/01/1900")
+        config_dict["edt"] = request.args.get("edt","01/01/2100")
+        config_dict["stime"] = int(request.args.get("stime","0"))
+        config_dict["etime"] = int(request.args.get("etime","23"))
         blockid = int(request.args.get("blockid","-1"))
         dotw = request.args.get("dotw","")
         crimetypes = request.args.get("crimetypes","")
