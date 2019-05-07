@@ -148,7 +148,7 @@ def download_data(cityid):
                 SESSION.delete(job)
                 SESSION.commit()
                 return Response(
-                    response=output,
+                    response=json.dumps(output),
                     status=200,
                     mimetype='application/json'
                 )
