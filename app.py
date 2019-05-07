@@ -145,7 +145,7 @@ def download_data(cityid):
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
-                print(outputs)
+                print(output)
                 sys.stdout.flush()
                 SESSION.delete(job)
                 SESSION.commit()
