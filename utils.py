@@ -23,14 +23,13 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query_city    = "incident.cityid = {cityid}"
     query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
     query_year    = "incident.year = {cyear}"
-    query_year    = "incident.month = {cmonth}"
     query_time    = "incident.hour >= {stime} AND hour <= {etime}"
     query_dotw    = "incident.dow = ANY({dotw})"
     query_crmtyp  = "crimetype.category = ANY({crimetypes})"
     query_locdesc = "(locdesctype.key1, locdesctype.key2, locdesctype.key3) = ANY({lockeys})"
     query_join    = "INNER JOIN crimetype ON incident.crimetypeid = crimetype.id INNER JOIN locdesctype ON incident.locdescid = locdesctype.id INNER JOIN city ON incident.cityid = city.id AND "
 
-    base_list = [query_city, query_date, query_time]
+    base_list = [query_city, query_date, query_year, query_time]
     outputs   = ", ".join(["city.city", "city.state", "city.country", "incident.datetime", "ST_XMAX(incident.location) AS latitude", "ST_YMAX(incident.location) AS longitude", "crimetype.category", "locdesctype.key1 AS location_key1", "locdesctype.key2 AS location_key2", "locdesctype.key3 AS location_key3"])
     if dotw != "":
         config_dict["dotw"] = dotw.split(",")
