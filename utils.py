@@ -144,7 +144,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     all_dows = [{"x": i, "y": 0.0} for i in range(7)]
     for c in results["dotw_all"]:
         all_dows[c["dow"]]["y"] = c["severity"]
-    all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 24, "y": all_dows[0]["y"]}, {"x": 25, "y": all_dows[1]["y"]}]
+    all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
     result["main"]["all"]["values_dow"] = all_dows
 
     data = {}
@@ -191,7 +191,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         dows = [{"x": i, "y": 0.0} for i in range(7)]
         for c in results["dotw_all"]:
             dows[c["dow"]]["y"] = c["severity"]
-        dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 24, "y": dows[0]["y"]}, {"x": 25, "y": dows[1]["y"]}]
+        dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
         result["main"][blockid]["values_dow"] = dows
 
         data = {}
