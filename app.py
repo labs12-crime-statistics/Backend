@@ -140,6 +140,7 @@ def download_data(cityid):
     config_dict["sdt"] = request.args.get("sdt","01/01/1900")
     config_dict["edt"] = request.args.get("edt","01/01/2100")
     config_dict["cyear"] = int(request.args.get("cyear"))
+    config_dict["cmonth"] = int(request.args.get("cmonth"))
     config_dict["stime"] = int(request.args.get("s_t","0"))
     config_dict["etime"] = int(request.args.get("e_t","24"))
     dotw = request.args.get("dotw","")
@@ -147,11 +148,12 @@ def download_data(cityid):
     locdesc1 = request.args.get("locdesc1","").split(",")
     locdesc2 = request.args.get("locdesc2","").split(",")
     locdesc3 = request.args.get("locdesc3","").split(",")
-    
+
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
     query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
     query_year    = "incident.year = {cyear}"
+    query_year    = "incident.month = {cmonth}"
     query_time    = "incident.hour >= {stime} AND hour <= {etime}"
     query_dotw    = "incident.dow = ANY({dotw})"
     query_crmtyp  = "crimetype.category = ANY({crimetypes})"
