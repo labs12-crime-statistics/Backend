@@ -17,7 +17,7 @@ import io
 import sys
 
 from models import *
-from utils import get_data
+from utils import get_data, get_download
 
 
 # Create Flask app and allow for CORS
@@ -120,7 +120,7 @@ def get_city_shapes(cityid):
 
 
 # Get prediction values for city
-@app.route("/predict/<int:cityid>", methods=["GET"])
+@app.route("/city/<int:cityid>/predict", methods=["GET"])
 def get_predict_data(cityid):
     query = """SELECT blockid, prediction FROM block WHERE cityid = :cityid AND prediction ID NOT NULL;"""
     prediction = {}
@@ -136,60 +136,55 @@ def get_predict_data(cityid):
 # Start job in queue or download incident data for city
 @app.route("/city/<int:cityid>/download", methods=["GET"])
 def download_data(cityid):
-    config_dict = {}
-    config_dict["cityid"] = cityid
-    config_dict["sdt"] = request.args.get("sdt","01/01/1900")
-    config_dict["edt"] = request.args.get("edt","01/01/2100")
-    config_dict["cyear"] = int(request.args.get("cyear"))
-    config_dict["cmonth"] = int(request.args.get("cmonth"))
-    config_dict["stime"] = int(request.args.get("s_t","0"))
-    config_dict["etime"] = int(request.args.get("e_t","24"))
-    dotw = request.args.get("dotw","")
-    crimetypes = request.args.get("crimetypes","")
-    locdesc1 = request.args.get("locdesc1","").split(",")
-    locdesc2 = request.args.get("locdesc2","").split(",")
-    locdesc3 = request.args.get("locdesc3","").split(",")
-
-    query_base    = " FROM incident "
-    query_city    = "incident.cityid = {cityid}"
-    query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
-    query_year    = "incident.year = {cyear}"
-    query_year    = "incident.month = {cmonth}"
-    query_time    = "incident.hour >= {stime} AND hour <= {etime}"
-    query_dotw    = "incident.dow = ANY({dotw})"
-    query_crmtyp  = "crimetype.category = ANY({crimetypes})"
-    query_locdesc = "(locdesctype.key1, locdesctype.key2, locdesctype.key3) = ANY({lockeys})"
-    query_join    = "INNER JOIN crimetype ON incident.crimetypeid = crimetype.id INNER JOIN locdesctype ON incident.locdescid = locdesctype.id INNER JOIN city ON incident.cityid = city.id AND "
-
-    base_list = [query_city, query_date, query_time]
-    outputs   = ", ".join(["city.city", "city.state", "city.country", "incident.datetime", "ST_XMAX(incident.location) AS latitude", "ST_YMAX(incident.location) AS longitude", "crimetype.category", "locdesctype.key1 AS location_key1", "locdesctype.key2 AS location_key2", "locdesctype.key3 AS location_key3"])
-    if dotw != "":
-        config_dict["dotw"] = dotw.split(",")
-        base_list.append(query_dotw)
-    if crimetypes != "":
-        config_dict["crimetypes"] = ["'{}'".format(x) for x in crimetypes.split(",")]
-        config_dict["crimetypes"] = "ARRAY[{}]".format(", ".join(config_dict["crimetypes"]))
-        base_list.append(query_crmtyp)
-    if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
-        config_dict["lockeys"] = []
-        for i in range(len(locdesc1)):
-            config_dict["lockeys"].append("('{}', '{}', '{}')".format(locdesc1[i], locdesc2[i], locdesc3[i]))
-        config_dict["lockeys"] = "ARRAY[{}]".format(", ".join(config_dict["lockeys"]))
-        base_list.append(query_locdesc)
-    query = "COPY (SELECT " + outputs + query_base + query_join + (" AND ".join(base_list)).format(**config_dict) +") TO STDOUT WITH DELIMITER ',' CSV;"
-    print(query)
-    sys.stdout.flush()
-    with io.StringIO() as f:
-        RAW_CONN = create_engine(DB_URI).raw_connection()
-        cursor = RAW_CONN.cursor()
-        cursor.copy_expert(query, f)
-        cursor.close()
-        RAW_CONN.close()
-        f.seek(0)
+    query_id = request.args.get('job')
+    if query_id:
+        found_job = q.fetch_job(query_id)
+        if found_job:
+            output = get_status(found_job)
+            if output["status"] == "completed":
+                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                output["id"] = query_id
+                output["result"] = job.result
+                SESSION.delete(job)
+                SESSION.commit()
+                return Response(
+                    response=output,
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                output["id"] = query_id
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+        else:
+            output = { 'id': None, 'error_message': 'No job exists with the id number ' + query_id }
+            return Response(
+                response=json.dumps(output),
+                status=403,
+                mimetype='application/json'
+            )
+    else:
+        config_dict = {}
+        config_dict["cityid"] = cityid
+        config_dict["sdt"] = request.args.get("sdt","01/01/1900")
+        config_dict["edt"] = request.args.get("edt","01/01/2100")
+        config_dict["cyear"] = int(request.args.get("cyear"))
+        config_dict["stime"] = int(request.args.get("s_t","0"))
+        config_dict["etime"] = int(request.args.get("e_t","24"))
+        dotw = request.args.get("dotw","")
+        crimetypes = request.args.get("crimetypes","")
+        locdesc1 = request.args.get("locdesc1","").split(",")
+        locdesc2 = request.args.get("locdesc2","").split(",")
+        locdesc3 = request.args.get("locdesc3","").split(",")    
+        new_job = q.enqueue(get_download, config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
+        output = get_status(new_job)
         return Response(
-            response=f.getvalue(),
+            response=json.dumps(output),
             status=200,
-            mimetype='text/csv'
+            mimetype='application/json'
         )
 
 

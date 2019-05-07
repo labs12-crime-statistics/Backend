@@ -18,6 +18,47 @@ ENGINE  = create_engine(DB_URI)
 Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
 
+def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
+    query_base    = " FROM incident "
+    query_city    = "incident.cityid = {cityid}"
+    query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
+    query_year    = "incident.year = {cyear}"
+    query_year    = "incident.month = {cmonth}"
+    query_time    = "incident.hour >= {stime} AND hour <= {etime}"
+    query_dotw    = "incident.dow = ANY({dotw})"
+    query_crmtyp  = "crimetype.category = ANY({crimetypes})"
+    query_locdesc = "(locdesctype.key1, locdesctype.key2, locdesctype.key3) = ANY({lockeys})"
+    query_join    = "INNER JOIN crimetype ON incident.crimetypeid = crimetype.id INNER JOIN locdesctype ON incident.locdescid = locdesctype.id INNER JOIN city ON incident.cityid = city.id AND "
+
+    base_list = [query_city, query_date, query_time]
+    outputs   = ", ".join(["city.city", "city.state", "city.country", "incident.datetime", "ST_XMAX(incident.location) AS latitude", "ST_YMAX(incident.location) AS longitude", "crimetype.category", "locdesctype.key1 AS location_key1", "locdesctype.key2 AS location_key2", "locdesctype.key3 AS location_key3"])
+    if dotw != "":
+        config_dict["dotw"] = dotw.split(",")
+        base_list.append(query_dotw)
+    if crimetypes != "":
+        config_dict["crimetypes"] = ["'{}'".format(x) for x in crimetypes.split(",")]
+        config_dict["crimetypes"] = "ARRAY[{}]".format(", ".join(config_dict["crimetypes"]))
+        base_list.append(query_crmtyp)
+    if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
+        config_dict["lockeys"] = []
+        for i in range(len(locdesc1)):
+            config_dict["lockeys"].append("('{}', '{}', '{}')".format(locdesc1[i], locdesc2[i], locdesc3[i]))
+        config_dict["lockeys"] = "ARRAY[{}]".format(", ".join(config_dict["lockeys"]))
+        base_list.append(query_locdesc)
+    query = "COPY (SELECT " + outputs + query_base + query_join + (" AND ".join(base_list)).format(**config_dict) +") TO STDOUT WITH DELIMITER ',' CSV;"
+    
+    with io.StringIO() as f:
+        RAW_CONN = create_engine(DB_URI).raw_connection()
+        cursor = RAW_CONN.cursor()
+        cursor.copy_expert(query, f)
+        cursor.close()
+        RAW_CONN.close()
+        f.seek(0)
+        job = Job(result=f.getvalue())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query = """SELECT MAX(categories.severity)
         FROM (
