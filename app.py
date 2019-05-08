@@ -230,9 +230,9 @@ def get_city_data(cityid):
         config_dict["edt"] = request.args.get("edt","01/01/2100")
         config_dict["stime"] = request.args.get("stime","0")
         config_dict["etime"] = request.args.get("etime","23")
-        if config_dict["sdt"] == "":
+        if config_dict["sdt"] == "//":
             config_dict["sdt"] = "01/01/1900"
-        if config_dict["edt"] == "":
+        if config_dict["edt"] == "//":
             config_dict["edt"] = "01/01/2100"
         if config_dict["stime"] == "":
             config_dict["stime"] = "0"
