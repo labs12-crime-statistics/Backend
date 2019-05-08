@@ -228,8 +228,18 @@ def get_city_data(cityid):
         config_dict["cityid"] = cityid
         config_dict["sdt"] = request.args.get("sdt","01/01/1900")
         config_dict["edt"] = request.args.get("edt","01/01/2100")
-        config_dict["stime"] = int(request.args.get("stime","0"))
-        config_dict["etime"] = int(request.args.get("etime","23"))
+        config_dict["stime"] = request.args.get("stime","0")
+        config_dict["etime"] = request.args.get("etime","23")
+        if config_dict["sdt"] == "":
+            config_dict["sdt"] = "01/01/1900"
+        if config_dict["edt"] == "":
+            config_dict["edt"] = "01/01/2100"
+        if config_dict["stime"] == "":
+            config_dict["stime"] = "0"
+        config_dict["stime"] = int(config_dict["stime"])
+        if config_dict["etime"] == "":
+            config_dict["etime"] = "23"
+        config_dict["etime"] = int(config_dict["etime"])
         blockid = int(request.args.get("blockid","-1"))
         dotw = request.args.get("dotw","")
         crimetypes = request.args.get("crimetypes","")
