@@ -2,21 +2,28 @@
 
 from flask import Flask, request, Response
 from flask_cors import CORS
+import redis
+from rq import Worker, Queue, Connection
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from decouple import config
-from geomet import wkb
+from geomet import wkb, wkt
 import pandas as pd
 
 import json
 import datetime
 import math
+import io
+import sys
 
 from models import *
+from utils import get_data, get_download
 
 
 # Create Flask app and allow for CORS
 app     = Flask(__name__)
+redis_url = config('REDIS_URL')
+q         = Queue('high', connection=redis.from_url(redis_url))
 CORS(app)
 
 # Connect to DB and create session with DB
@@ -24,6 +31,17 @@ DB_URI  = config('DB_URI')
 ENGINE  = create_engine(DB_URI)
 Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
+
+
+# Query for job
+def get_status(job):
+    status = {
+        'id': job.id,
+        'result': job.result,
+        'status': 'failed' if job.is_failed else 'pending' if job.result == None else 'completed'
+    }
+    status.update(job.meta)
+    return status
 
 
 # Endpoints for backend
@@ -36,6 +54,7 @@ def health_check():
     )
 
 
+# Get list of cities in json format
 @app.route("/cities", methods=["GET"])
 def get_cities():
     """Get all cities in DB with respective id and user friendly name."""
@@ -65,6 +84,7 @@ def get_cities():
     )
 
 
+# Get zipcode and census tract geometries
 @app.route("/city/<int:cityid>/shapes", methods=["GET"])
 def get_city_shapes(cityid):
     """Get all blocks for a specific City id with their respective id, shape
@@ -78,10 +98,16 @@ def get_city_shapes(cityid):
             "shape": wkb.loads(block.shape.data.tobytes())["coordinates"]
         } for block in
             SESSION.query(Blocks).filter(Blocks.cityid == cityid).all()]
+        zipcodes = [{
+            "zipcode": zipcode.zipcode,
+            "shape": wkb.loads(zipcode.shape.data.tobytes())["coordinates"]
+        } for zipcode in
+            SESSION.query(ZipcodeGeom).filter(ZipcodeGeom.cityid == cityid).all()]
         return Response(
             response=json.dumps({
                 "error": "none",
                 "blocks": blocks,
+                "zipcodes": zipcodes,
                 "citylocation": citycoords}),
             status=200,
             mimetype='application/json'
@@ -92,180 +118,141 @@ def get_city_shapes(cityid):
         mimetype='application/json'
     )
 
-@app.route("/city/<int:cityid>/data", methods=["GET"])
-def get_city_data(cityid):
-    """Get values for specified parameters and city."""
-    config_dict = {}
-    config_dict["cityid"] = int(cityid)
-    config_dict["sdt"] = datetime.datetime.strptime(request.args.get("s_d","01/01/1900"), "%m/%d/%Y")
-    config_dict["edt"] = datetime.datetime.strptime(request.args.get("e_d","01/01/2100"), "%m/%d/%Y")
-    config_dict["stime"] = int(request.args.get("s_t","0"))
-    config_dict["etime"] = int(request.args.get("e_t","24"))
-    blockid = int(request.args.get("blockid","-1"))
-    dotw = request.args.get("dotw","")
-    crimetypes = request.args.get("crimetypes","")
-    crimeprim = request.args.get("crimeprim","")
 
-    query = """SELECT MAX(severity)
-        FROM (
-            SELECT SUM(severity)/SUM(block.population) AS severity
-            FROM incident
-            INNER JOIN block ON incident.blockid = block.id INNER JOIN crimetype ON incident.crimetypeid = crimetype.id AND block.population > 0
-            GROUP BY
-                blockid,
-                EXTRACT(year FROM datetime),
-                EXTRACT(month FROM datetime),
-                EXTRACT(dow FROM datetime),
-                EXTRACT(hour FROM datetime)
-        ) AS categories;"""
-    severity = SESSION.execute(text(query)).fetchone()[0] * 24 * 7
-
-    query_base   = " FROM incident "
-    query_city   = "incident.cityid = :cityid"
-    query_date   = "datetime >= :sdt AND datetime <= :edt"
-    query_time   = "EXTRACT(hour FROM datetime) >= :stime AND EXTRACT(hour FROM datetime) <= :etime"
-    query_block  = "blockid = :blockid"
-    query_dotw   = "EXTRACT(dow FROM datetime) = ANY(:dotw)"
-    query_crmtyp = "category = ANY(:crimetypes)"
-    query_crmprm = "SPLIT_PART(category, ' | ', 1) = ANY(:crimeprim)"
-    query_pop    = "block.population > 0"
-    query_join   = "INNER JOIN block ON incident.blockid = block.id INNER JOIN crimetype ON incident.crimetypeid = crimetype.id AND "
-    q_base_end   = "blockid, EXTRACT(year FROM datetime), EXTRACT(month FROM datetime)"
-    q_date_end   = "EXTRACT(year FROM datetime), EXTRACT(month FROM datetime)"
-    q_time_end   = "EXTRACT(hour FROM datetime)"
-    q_dotw_end   = "EXTRACT(dow FROM datetime)"
-    q_crmtyp_end = "category"
-    mult = 24.0 / min(config_dict["etime"] - config_dict["stime"] + 1, 24)
-
-
-    base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
-    if dotw != "":
-        config_dict["dotw"] = [int(x) for x in dotw.split(",")]
-        base_list["dow"] = query_dotw
-        mult *= 7 / len(config_dict["dotw"])
-    if crimeprim != "" and crimetypes != "":
-        config_dict["crimetypes"] = crimetypes.split(",")
-        config_dict["crimeprim"] = crimeprim.split(",")
-        base_list["crime"] = "({} OR {})".format(query_crmtyp, query_crmprm)
-    elif crimetypes != "":
-        config_dict["crimetypes"] = crimetypes.split(",")
-        base_list["crime"] = query_crmtyp
-    elif crimeprim != "":
-        config_dict["crimeprim"] = crimeprim.split(",")
-        base_list["crime"] = query_crmprm
-    if blockid != -1:
-        config_dict["blockid"] = blockid
-
-    dow = {
-        0: "M",
-        1: "Tu",
-        2: "W",
-        3: "Th",
-        4: "F",
-        5: "Sa",
-        6: "Su"
-    }
-
-    funcs = {
-        "map": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
-        "date": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "month": int(r[2]), "year": int(r[1])} for r in res],
-        "time": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "hour": int(r[1])} for r in res],
-        "dotw": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "dow": dow[int(r[1])]} for r in res],
-        "crmtyp": lambda res: [{"count": r[0] * 100000, "category": r[1]} for r in res],
-        "date_all": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "month": int(r[2]), "year": int(r[1])} for r in res],
-        "time_all": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "hour": int(r[1])} for r in res],
-        "dotw_all": lambda res: [{"severity": math.pow(r[0] / severity, 0.1), "dow": dow[int(r[1])]} for r in res],
-        "crmtyp_all": lambda res: [{"count": r[0] * 100000, "category": r[1]} for r in res],
-    }
-    
-    charts = {
-        "map": "SELECT SUM(severity)/SUM(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
-        "date_all": "SELECT SUM(severity)/SUM(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "date"]) + " GROUP BY " + q_date_end,
-        "time_all": "SELECT SUM(severity)/SUM(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end,
-        "dotw_all": "SELECT SUM(severity)/SUM(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end,
-        "crmtyp_all": "SELECT CAST(COUNT(*) AS FLOAT)/SUM(block.population), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end
-    }
-    if blockid != -1:
-        charts["date"] = "SELECT SUM(severity)/SUM(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "date"]+[query_block]) + " GROUP BY " + q_date_end
-        charts["time"] = "SELECT SUM(severity)/SUM(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end
-        charts["dotw"] = "SELECT SUM(severity)/SUM(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end
-        charts["crmtyp"] = "SELECT CAST(COUNT(*) AS FLOAT)/SUM(block.population), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end
-    results = {}
-    for k in charts:
-        res = SESSION.execute(text(charts[k]), config_dict).fetchall()
-        results[k] = funcs[k](res)
-    
-    result = {
-        "error": "none",
-        "main": {
-            "all": {
-                "values_date": [],
-                "values_time": [],
-                "values_dow": [],
-                "values_type": []
-            }
-        },
-        "other": [],
-        "timeline": []
-    }
-    
-    map_df = pd.DataFrame(results["map"])
-    map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
-    result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
-    for i in map_cross.index:
-        result["other"].append({
-            "id": i,
-            "values": list(map_cross.loc[i,:].values)
-        })
-    
-    result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date_all"]]
-    result["main"]["all"]["values_time"] = sorted([{"x": c["hour"], "y": c["severity"]} for c in results["time_all"]], key=lambda x: x.get("x"))
-    result["main"]["all"]["values_dow"] = [{"x": c["dow"], "y": c["severity"]} for c in results["dotw_all"]]
-
-    data = {}
-    for r in results["crmtyp_all"]:
-        vals = r["category"].split(" | ")
-        if vals[0] not in data:
-            data[vals[0]] = {}
-        data[vals[0]][vals[1]] = r["count"]
-    n_data = {
-        "name": "Crime Type for All Data",
-        "children": []
-    }
-    for k1 in data:
-        t_d = {"name": k1, "children": []}
-        for k2 in data[k1]:
-            t_d["children"].append({"name": "{} | {}".format(k1,k2), "count": data[k1][k2]})
-        n_data["children"].append(t_d)
-    result["main"]["all"]["values_type"] = n_data
-
-    if blockid != -1:
-        result["main"][blockid] = {}
-        result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date"]]
-        result["main"][blockid]["values_time"] = sorted([{"x": c["hour"], "y": c["severity"]} for c in results["time"]], key=lambda x: x.get("x"))
-        result["main"][blockid]["values_dow"] = [{"x": c["dow"], "y": c["severity"]} for c in results["dotw"]]
-
-        data = {}
-        for r in results["crmtyp"]:
-            vals = r["category"].split(" | ")
-            if vals[0] not in data:
-                data[vals[0]] = {}
-            data[vals[0]][vals[1]] = r["count"]
-        n_data = {
-            "name": "Crime Type for All Data",
-            "children": []
-        }
-        for k1 in data:
-            t_d = {"name": k1, "children": []}
-            for k2 in data[k1]:
-                t_d["children"].append({"name": "{} | {}".format(k1,k2), "count": data[k1][k2]})
-            n_data["children"].append(t_d)
-        result["main"][blockid]["values_type"] = n_data
+# Get prediction values for city
+@app.route("/city/<int:cityid>/predict", methods=["GET"])
+def get_predict_data(cityid):
+    query = """SELECT blockid, prediction FROM block WHERE cityid = :cityid AND prediction ID NOT NULL;"""
+    prediction = {}
+    for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
+        prediction[r[0]] = np.frombuffer(row[1], dtype=np.float64).reshape((12,168)).tolist()
     return Response(
-        response=json.dumps(result),
+        response=json.dumps({"error": "none", "prediction": json.dumps(prediction)}),
         status=200,
         mimetype='application/json'
     )
+
+
+# Start job in queue or download incident data for city
+@app.route("/city/<int:cityid>/download", methods=["GET"])
+def download_data(cityid):
+    query_id = request.args.get('job')
+    if query_id:
+        found_job = q.fetch_job(query_id)
+        if found_job:
+            output = get_status(found_job)
+            if output["status"] == "completed":
+                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                output["id"] = query_id
+                output["result"] = job.result
+                print(output)
+                sys.stdout.flush()
+                SESSION.delete(job)
+                SESSION.commit()
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                output["id"] = query_id
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+        else:
+            output = { 'id': None, 'error_message': 'No job exists with the id number ' + query_id }
+            return Response(
+                response=json.dumps(output),
+                status=403,
+                mimetype='application/json'
+            )
+    else:
+        config_dict = {}
+        config_dict["cityid"] = cityid
+        config_dict["sdt"] = request.args.get("sdt","01/01/1900")
+        config_dict["edt"] = request.args.get("edt","01/01/2100")
+        config_dict["cyear"] = int(request.args.get("cyear"))
+        config_dict["stime"] = int(request.args.get("s_t","0"))
+        config_dict["etime"] = int(request.args.get("e_t","24"))
+        dotw = request.args.get("dotw","")
+        crimetypes = request.args.get("crimetypes","")
+        locdesc1 = request.args.get("locdesc1","").split(",")
+        locdesc2 = request.args.get("locdesc2","").split(",")
+        locdesc3 = request.args.get("locdesc3","").split(",")    
+        new_job = q.enqueue(get_download, config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
+        output = get_status(new_job)
+        return Response(
+            response=json.dumps(output),
+            status=200,
+            mimetype='application/json'
+        )
+
+
+# Get aggregate data for city
+@app.route("/city/<int:cityid>/data", methods=["GET"])
+def get_city_data(cityid):
+    """Get values for specified parameters and city."""
+    query_id = request.args.get('job')
+    if query_id:
+        found_job = q.fetch_job(query_id)
+        if found_job:
+            output = get_status(found_job)
+            if output["status"] == "completed":
+                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                output["result"] = job.result
+                SESSION.delete(job)
+                SESSION.commit()
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                output["id"] = query_id
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+        else:
+            output = { 'id': None, 'error_message': 'No job exists with the id number ' + query_id }
+            return Response(
+                response=json.dumps(output),
+                status=403,
+                mimetype='application/json'
+            )
+    else:
+        config_dict = {}
+        config_dict["cityid"] = cityid
+        config_dict["sdt"] = request.args.get("sdt","01/01/1900")
+        config_dict["edt"] = request.args.get("edt","01/01/2100")
+        config_dict["stime"] = request.args.get("stime","0")
+        config_dict["etime"] = request.args.get("etime","23")
+        if config_dict["sdt"] == "//":
+            config_dict["sdt"] = "01/01/1900"
+        if config_dict["edt"] == "//":
+            config_dict["edt"] = "01/01/2100"
+        if config_dict["stime"] == "":
+            config_dict["stime"] = "0"
+        config_dict["stime"] = int(config_dict["stime"])
+        if config_dict["etime"] == "":
+            config_dict["etime"] = "23"
+        config_dict["etime"] = int(config_dict["etime"])
+        blockid = int(request.args.get("blockid","-1"))
+        dotw = request.args.get("dotw","")
+        crimetypes = request.args.get("crimetypes","")
+        locdesc1 = request.args.get("locdesc1","").split(",")
+        locdesc2 = request.args.get("locdesc2","").split(",")
+        locdesc3 = request.args.get("locdesc3","").split(",")
+        new_job = q.enqueue(get_data, config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
+        output = get_status(new_job)
+        return Response(
+            response=json.dumps(output),
+            status=200,
+            mimetype='application/json'
+        )
 
 
 if __name__ == "__main__":
