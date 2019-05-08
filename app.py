@@ -85,12 +85,12 @@ def get_cities():
 
 
 @app.route("/city/<int:cityid>/location", methods=["GET"])
-def get_location_blockid():
+def get_location_blockid(cityid):
     try:
         lat = float(request.args.get("lat"))
         lng = float(request.args.get("lng"))
-        query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) LIMIT 1;"""
-        blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng}).fetchone()
+        query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) AND cityid = :cityid LIMIT 1;"""
+        blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng, "cityid": cityid}).fetchone()
         print(blockid)
         sys.stdout.flush()
         blockid = blockid[0]
