@@ -84,6 +84,29 @@ def get_cities():
     )
 
 
+@app.route("/city/<int:cityid>/location", methods=["GET"])
+def get_cities():
+    try:
+        lat = float(request.args.get("lat"))
+        lng = float(request.args.get("lng"))
+        query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) LIMIT 1;"""
+        blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng}).fetchone()
+        print(blockid)
+        sys.stdout.flush()
+        blockid = blockid[0]
+        return Response(
+            response=json.dumps({"blockid": blockid, "error": "none"}),
+            status=200,
+            mimetype='application/json'
+        )
+    except:
+        return Response(
+            response=json.dumps({"error": "Incorrect location format."}),
+            status=404,
+            mimetype='application/json'
+        )
+
+
 # Get zipcode and census tract geometries
 @app.route("/city/<int:cityid>/shapes", methods=["GET"])
 def get_city_shapes(cityid):
