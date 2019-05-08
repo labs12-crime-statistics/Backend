@@ -85,7 +85,7 @@ def get_cities():
 
 
 @app.route("/city/<int:cityid>/location", methods=["GET"])
-def get_cities():
+def get_location_blockid():
     try:
         lat = float(request.args.get("lat"))
         lng = float(request.args.get("lng"))
