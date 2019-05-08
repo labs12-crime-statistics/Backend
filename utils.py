@@ -223,7 +223,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     if blockid != -1:
         result["main"][blockid] = {}
         result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date"]]
-        times = [{"x": i, "y": 0.0} for i in range(23)]
+        times = [{"x": i, "y": 0.0} for i in range(24)]
         for c in results["time_all"]:
             times[c["hour"]]["y"] = c["severity"]
         times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
