@@ -244,7 +244,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         for k1 in data:
             t_d = {"name": k1, "count": data[k1]}
             n_data["children"].append(t_d)
-        result["main"][blockid]["values_type"] = n_data
+        result["main"]["Block "+str(blockid)]["values_type"] = n_data
 
         data = {}
         for r in results["locdesc"]:
