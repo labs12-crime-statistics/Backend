@@ -145,7 +145,7 @@ def get_city_shapes(cityid):
 # Get prediction values for city
 @app.route("/city/<int:cityid>/predict", methods=["GET"])
 def get_predict_data(cityid):
-    query = """SELECT blockid, prediction FROM block WHERE cityid = :cityid AND prediction ID NOT NULL;"""
+    query = """SELECT blockid, prediction FROM block WHERE cityid = :cityid AND prediction NOT NULL;"""
     prediction = {}
     for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
         prediction[r[0]] = np.frombuffer(row[1], dtype=np.float64).reshape((12,168)).tolist()
@@ -200,7 +200,7 @@ def download_data(cityid):
         config_dict["stime"] = int(request.args.get("s_t","0"))
         config_dict["etime"] = int(request.args.get("e_t","24"))
         dotw = request.args.get("dotw","")
-        crimetypes = request.args.get("crimetypes","")
+        crimetypes = request.args.get("crimetypes","").split(",")
         locdesc1 = request.args.get("locdesc1","").split(",")
         locdesc2 = request.args.get("locdesc2","").split(",")
         locdesc3 = request.args.get("locdesc3","").split(",")    

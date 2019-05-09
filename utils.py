@@ -229,7 +229,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
         result["main"]["Block "+str(blockid)]["values_time"] = times
         dows = [{"x": i, "y": 0.0} for i in range(7)]
-        for c in results["dotw_all"]:
+        for c in results["dotw"]:
             dows[c["dow"]]["y"] = c["severity"]
         dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
         result["main"]["Block "+str(blockid)]["values_dow"] = dows
