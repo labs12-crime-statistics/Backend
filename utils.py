@@ -215,24 +215,24 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         for k2 in data[k1]:
             t_e = {"name": "{} | {}".format(k1,k2), "children": []}
             for k3 in data[k1][k2]:
-                t_e["children"].append({"name": "{} | {} | {}".format(k1,k2,k3), "count": data[k1][k2][k3]})
+                t_e["children"].append({"name": "{} | {} | {}".format(k1,k2,k3), "count": data[k1][k2][k3], "alpha": 1.0})
             t_d["children"].append(t_e)
         n_data["children"].append(t_d)
     result["main"]["all"]["values_locdesc"] = n_data
 
     if blockid != -1:
-        result["main"][blockid] = {}
-        result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date"], key=lambda k: k['date'])]
+        result["main"]["Block "+str(blockid)] = {}
+        result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date"], key=lambda k: k['date'])]
         times = [{"x": i, "y": 0.0} for i in range(24)]
-        for c in results["time_all"]:
+        for c in results["time"]:
             times[c["hour"]]["y"] = c["severity"]
         times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
-        result["main"][blockid]["values_time"] = times
+        result["main"]["Block "+str(blockid)]["values_time"] = times
         dows = [{"x": i, "y": 0.0} for i in range(7)]
         for c in results["dotw_all"]:
             dows[c["dow"]]["y"] = c["severity"]
         dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
-        result["main"][blockid]["values_dow"] = dows
+        result["main"]["Block "+str(blockid)]["values_dow"] = dows
 
         data = {}
         for r in results["crmtyp"]:
@@ -262,10 +262,10 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             for k2 in data[k1]:
                 t_e = {"name": "{} | {}".format(k1,k2), "children": []}
                 for k3 in data[k1][k2]:
-                    t_e["children"].append({"name": "{} | {} | {}".format(k1,k2,k3), "count": data[k1][k2][k3]})
+                    t_e["children"].append({"name": "{} | {} | {}".format(k1,k2,k3), "count": data[k1][k2][k3], "alpha": 1.0})
                 t_d["children"].append(t_e)
             n_data["children"].append(t_d)
-        result["main"][blockid]["values_locdesc"] = n_data
+        result["main"]["Block "+str(blockid)]["values_locdesc"] = n_data
     job = Job(result=json.dumps(result))
     SESSION.add(job)
     SESSION.commit()
