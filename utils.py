@@ -120,12 +120,12 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
 
     funcs = {
         "map": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
-        "date": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1])} for r in res],
+        "date": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
         "time": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
         "dotw": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
         "crmtyp": lambda res: [{"count": r[0], "category": r[1]} for r in res],
         "locdesc": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res],
-        "date_all": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1])} for r in res],
+        "date_all": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
         "time_all": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
         "dotw_all": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
         "crmtyp_all": lambda res: [{"count": r[0], "category": r[1]} for r in res],
@@ -175,7 +175,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             "values": list(map_cross.loc[i,:].values)
         })
     
-    result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date_all"]]
+    result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date_all"], key=lambda k: k['date'])]
     all_times = [{"x": i, "y": 0.0} for i in range(24)]
     for c in results["time_all"]:
         all_times[c["hour"]]["y"] = c["severity"]
@@ -222,7 +222,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
 
     if blockid != -1:
         result["main"][blockid] = {}
-        result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in results["date"]]
+        result["main"][blockid]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date"], key=lambda k: k['date'])]
         times = [{"x": i, "y": 0.0} for i in range(24)]
         for c in results["time_all"]:
             times[c["hour"]]["y"] = c["severity"]
