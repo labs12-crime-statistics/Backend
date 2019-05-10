@@ -169,7 +169,9 @@ def get_predict_data(cityid):
         prediction[int(row[0])] = (np.frombuffer(bytes.fromhex(row[1]), dtype=np.float64).reshape((12,7,24)) / maxseverity)**0.1
         block_date[int(row[0])] = int(row[3])*12+int(row[2])-1
         start = int(row[3])*12+int(row[2])-1
+        print(start)
         all_dates += list(range(start, start+12))
+    sys.stdout.flush()
     all_dates = sorted(list(set(all_dates)))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
