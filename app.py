@@ -166,11 +166,9 @@ def get_predict_data(cityid):
     all_dates = []
     block_date = {}
     for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
-        print(row)
-        sys.stdout.flush()
-        prediction[int(row[0])] = (np.frombuffer(bytes.fromhex(row[1]), dtype=np.float64).reshape((12,7,24)) / maxseverity)**0.1
-        block_date[int(row[0])] = int(row[3])*12+int(row[2])-1
         start = int(row[3])*12+int(row[2])-1
+        prediction[int(row[0])] = np.frombuffer(bytes.fromhex(row[1]), dtype=np.float64).reshape((12,7,24)) / maxseverity
+        block_date[int(row[0])] = start
         all_dates += list(range(start, start+12))
     all_dates = sorted(list(set(all_dates)))
     predictions_n = {}
@@ -182,8 +180,6 @@ def get_predict_data(cityid):
         predictionall += predictions_n[k]
         predictions_n[k] = predictions_n[k].tolist()
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    print(all_dates_format)
-    sys.stdout.flush()
     predictionall = predictionall.tolist()
     return Response(
         response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n}),
