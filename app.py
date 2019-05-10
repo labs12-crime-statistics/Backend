@@ -160,7 +160,7 @@ def get_predict_data(cityid):
                 incident.hour
         ) AS categories;"""
     maxseverity = float(SESSION.execute(text(query)).fetchone()[0])
-    query = """SELECT blockid, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year FROM block WHERE cityid = :cityid AND prediction IS NOT NULL;"""
+    query = """SELECT id, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year FROM block WHERE cityid = :cityid AND prediction IS NOT NULL;"""
     prediction = {}
     all_dates = []
     block_date = {}
