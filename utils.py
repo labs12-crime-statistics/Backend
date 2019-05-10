@@ -53,7 +53,7 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
         cursor.close()
         RAW_CONN.close()
         f.seek(0)
-        job = Job(result=f.getvalue())
+        job = Job(result=f.getvalue(), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
         return job.id
@@ -266,7 +266,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 t_d["children"].append(t_e)
             n_data["children"].append(t_d)
         result["main"]["Block "+str(blockid)]["values_locdesc"] = n_data
-    job = Job(result=json.dumps(result))
+    job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
     return job.id

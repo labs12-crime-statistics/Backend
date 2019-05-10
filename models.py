@@ -32,6 +32,8 @@ class Blocks(BASE):
     shape         = Column(Geometry(geometry_type='MULTIPOLYGON'), nullable=False)
     population    = Column(Integer, nullable=False)
     prediction    = Column(LargeBinary, nullable=True)
+    year          = Column(Integer, nullable=True)
+    month         = Column(Integer, nullable=True)
     city          = relationship("City", back_populates="blocks")
     incidents     = relationship("Incident", back_populates="block")
 
@@ -93,3 +95,4 @@ class Job(BASE):
     __tablename__ = 'job'
     id            = Column(BigInteger, primary_key=True)
     result        = Column(String, nullable=False)
+    datetime      = Column(DateTime, nullable=False)
