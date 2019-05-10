@@ -174,6 +174,8 @@ def get_predict_data(cityid):
     predictionall = np.zeros((len(all_dates),7,24))
     for k in prediction:
         dift = block_date[k]-all_dates[0]
+        print(dift)
+        sys.stdout.flush()
         predictions_n[k] = np.zeros((len(all_dates),7,24))
         predictions_n[k][dift:dift+12,:,:] = prediction[k]
         predictionall += predictions_n[k]
