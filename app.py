@@ -145,12 +145,42 @@ def get_city_shapes(cityid):
 # Get prediction values for city
 @app.route("/city/<int:cityid>/predict", methods=["GET"])
 def get_predict_data(cityid):
-    query = """SELECT blockid, prediction FROM block WHERE cityid = :cityid AND prediction NOT NULL;"""
+    query = """SELECT MAX(categories.severity)
+        FROM (
+            SELECT SUM(crimetype.severity)/AVG(block.population) AS severity
+            FROM incident
+            INNER JOIN block ON incident.blockid = block.id
+            INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
+                AND block.population > 0
+            GROUP BY
+                incident.blockid,
+                incident.year,
+                incident.month,
+                incident.dow,
+                incident.hour
+        ) AS categories;"""
+    maxseverity = float(SESSION.execute(text(query)).fetchone()[0])
+    query = """SELECT blockid, prediction, month, year FROM block WHERE cityid = :cityid AND prediction NOT NULL;"""
     prediction = {}
+    all_dates = []
+    block_date = {}
     for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
-        prediction[r[0]] = np.frombuffer(row[1], dtype=np.float64).reshape((12,168)).tolist()
+        prediction[int(r[0])] = np.frombuffer(row[1], dtype=np.float64).reshape((12,7,24)) / maxseverity
+        block_date[int(r[0])] = int(r[3])*12+int(r[2])-1
+        all_dates.append(int(r[3])*12+int(r[2])-1)
+    all_dates = sorted(list(set(all_dates)))
+    predictions_n = {}
+    predictionall = np.zeros((len(all_dates),7,24))
+    for k in prediction:
+        dift = blockdate[k]-alldates[0]
+        predictions_n[k] = np.zeros((len(all_dates),7,24))
+        predictions_n[k][dift:dift+12,:,:] = prediction[k]
+        predictionall += predictions_n[k]
+        predictions_n[k] = predictions_n[k].tolist()
+    all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
+    predictionall = predictionall.tolist()
     return Response(
-        response=json.dumps({"error": "none", "prediction": json.dumps(prediction)}),
+        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": prediction}),
         status=200,
         mimetype='application/json'
     )
@@ -168,9 +198,7 @@ def download_data(cityid):
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
-                print(output)
-                sys.stdout.flush()
-                SESSION.delete(job)
+                SESSION.query(Job).filter(Job.datetime > datetime.datetime.utcnow() + datetime.timedelta(hour=-1)).delete()
                 SESSION.commit()
                 return Response(
                     response=json.dumps(output),
@@ -225,7 +253,7 @@ def get_city_data(cityid):
             if output["status"] == "completed":
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["result"] = job.result
-                SESSION.delete(job)
+                SESSION.query(Job).filter(Job.datetime > datetime.datetime.utcnow() + datetime.timedelta(hour=-1)).delete()
                 SESSION.commit()
                 return Response(
                     response=json.dumps(output),
