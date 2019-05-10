@@ -170,6 +170,9 @@ def get_predict_data(cityid):
         block_date[int(row[0])] = int(row[3])*12+int(row[2])-1
         start = int(row[3])*12+int(row[2])-1
         all_dates += list(range(start, start+12))
+    print(block_date)
+    print(prediction)
+    sys.stdout.flush()
     all_dates = sorted(list(set(all_dates)))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
