@@ -160,12 +160,12 @@ def get_predict_data(cityid):
                 incident.hour
         ) AS categories;"""
     maxseverity = float(SESSION.execute(text(query)).fetchone()[0])
-    query = """SELECT blockid, prediction, month, year FROM block WHERE cityid = :cityid AND prediction NOT NULL;"""
+    query = """SELECT blockid, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year FROM block WHERE cityid = :cityid AND prediction NOT NULL;"""
     prediction = {}
     all_dates = []
     block_date = {}
     for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
-        prediction[int(r[0])] = np.frombuffer(row[1], dtype=np.float64).reshape((12,7,24)) / maxseverity
+        prediction[int(r[0])] = (np.frombuffer(row[1], dtype=np.float64).reshape((12,7,24)) / maxseverity)**0.1
         block_date[int(r[0])] = int(r[3])*12+int(r[2])-1
         all_dates.append(int(r[3])*12+int(r[2])-1)
     all_dates = sorted(list(set(all_dates)))
@@ -180,7 +180,7 @@ def get_predict_data(cityid):
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = predictionall.tolist()
     return Response(
-        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": prediction}),
+        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n}),
         status=200,
         mimetype='application/json'
     )
