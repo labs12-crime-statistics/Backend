@@ -168,15 +168,13 @@ def get_predict_data(cityid):
     for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
         prediction[int(row[0])] = (np.frombuffer(bytes.fromhex(row[1]), dtype=np.float64).reshape((12,7,24)) / maxseverity)**0.1
         block_date[int(row[0])] = int(row[3])*12+int(row[2])-1
-        all_dates.append(int(row[3])*12+int(row[2])-1)
+        start = int(row[3])*12+int(row[2])-1
+        all_dates += list(range(start, start+12))
     all_dates = sorted(list(set(all_dates)))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
     for k in prediction:
         dift = block_date[k]-all_dates[0]
-        print(dift)
-        print(len(all_dates))
-        sys.stdout.flush()
         predictions_n[k] = np.zeros((len(all_dates),7,24))
         predictions_n[k][dift:dift+12,:,:] = prediction[k]
         predictionall += predictions_n[k]
