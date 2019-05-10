@@ -170,8 +170,6 @@ def get_predict_data(cityid):
         block_date[int(row[0])] = int(row[3])*12+int(row[2])-1
         start = int(row[3])*12+int(row[2])-1
         all_dates += list(range(start, start+12))
-    print(block_date)
-    sys.stdout.flush()
     all_dates = sorted(list(set(all_dates)))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
@@ -182,6 +180,8 @@ def get_predict_data(cityid):
         predictionall += predictions_n[k]
         predictions_n[k] = predictions_n[k].tolist()
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
+    print(all_dates_format)
+    sys.stdout.flush()
     predictionall = predictionall.tolist()
     return Response(
         response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n}),
