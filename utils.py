@@ -101,23 +101,6 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     mult_time = 24.0 / min(config_dict["etime"] - config_dict["stime"] + 1, 24)
     mult_dow = 1
 
-
-    base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
-    if dotw != "":
-        config_dict["dotw"] = [int(x) for x in dotw.split(",")]
-        base_list["dow"] = query_dotw
-        mult_dow = 7.0 / len(config_dict["dotw"])
-    if crimetypes != "":
-        config_dict["crimetypes"] = crimetypes.split(",")
-        base_list["crime"] = query_crmtyp
-    if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
-        config_dict["lockeys"] = []
-        for i, _ in enumerate(locdesc1):
-            config_dict["lockeys"].append([locdesc1[i], locdesc2[i], locdesc3[i]])
-        base_list["locdesc"] = query_locdesc
-    if blockid != -1:
-        config_dict["blockid"] = blockid
-
     funcs = {
         "map": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
         "date": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
@@ -131,7 +114,23 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         "crmtyp_all": lambda res: [{"count": r[0], "category": r[1]} for r in res],
         "locdesc_all": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res]
     }
-    
+
+    base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
+        if dotw != "":
+            config_dict["dotw"] = [int(x) for x in dotw.split(",")]
+            base_list["dow"] = query_dotw
+            mult_dow = 7.0 / len(config_dict["dotw"])
+        if crimetypes != "":
+            config_dict["crimetypes"] = crimetypes.split(",")
+            base_list["crime"] = query_crmtyp
+        if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
+            config_dict["lockeys"] = []
+            for i, _ in enumerate(locdesc1):
+                config_dict["lockeys"].append([locdesc1[i], locdesc2[i], locdesc3[i]])
+            base_list["locdesc"] = query_locdesc
+        if blockid != -1:
+            config_dict["blockid"] = blockid
+
     charts = {
         "map": "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
         "date_all": "SELECT SUM(crimetype.severity)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_date_end,
@@ -146,94 +145,90 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         charts["dotw"] = "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end
         charts["crmtyp"] = "SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end
         charts["locdesc"] = "SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]+[query_block]) + " GROUP BY " + q_locdesc_end
-    results = {}
-    for k in charts:
-        res = SESSION.execute(text(charts[k]), config_dict).fetchall()
-        results[k] = funcs[k](res)
-    
-    result = {
-        "error": "none",
-        "main": {
-            "all": {
-                "values_date": [],
-                "values_time": [],
-                "values_dow": [],
-                "values_type": [],
-                "values_locdesc": []
+
+    if config_dict["loadtype"] == "dow":        
+        result = {
+            "error": "none",
+            "main": {
+                "all": {
+                    "values_dow": [],
+                }
             }
-        },
-        "other": [],
-        "timeline": []
-    }
-    
-    map_df = pd.DataFrame(results["map"])
-    map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
-    result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
-    for i in map_cross.index:
-        result["other"].append({
-            "id": i,
-            "values": list(map_cross.loc[i,:].values)
-        })
-    
-    result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date_all"], key=lambda k: k['date'])]
-    all_times = [{"x": i, "y": 0.0} for i in range(24)]
-    for c in results["time_all"]:
-        all_times[c["hour"]]["y"] = c["severity"]
-    all_times = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
-    result["main"]["all"]["values_time"] = all_times
-    all_dows = [{"x": i, "y": 0.0} for i in range(7)]
-    for c in results["dotw_all"]:
-        all_dows[c["dow"]]["y"] = c["severity"]
-    all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
-    result["main"]["all"]["values_dow"] = all_dows
+        }
+        
+        all_dows = [{"x": i, "y": 0.0} for i in range(7)]
+        for c in results["dotw_all"]:
+            all_dows[c["dow"]]["y"] = c["severity"]
+        all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
+        result["main"]["all"]["values_dow"] = all_dows
 
-    data = {}
-    for r in results["crmtyp_all"]:
-        data[r["category"]] = r["count"]
-    n_data = {
-        "name": "Crime Type for All Data",
-        "children": []
-    }
-    for k1 in data:
-        t_d = {"name": k1, "count": data[k1]}
-        n_data["children"].append(t_d)
-    result["main"]["all"]["values_type"] = n_data
+        if blockid != -1:
+            result["main"]["Block "+str(blockid)] = {}
+            dows = [{"x": i, "y": 0.0} for i in range(7)]
+            for c in results["dotw"]:
+                dows[c["dow"]]["y"] = c["severity"]
+            dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
+            result["main"]["Block "+str(blockid)]["values_dow"] = dows
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "time":
+        result = {
+            "error": "none",
+            "main": {
+                "all": {
+                    "values_time": []
+                }
+            }
+        }
 
-    data = {}
-    for r in results["locdesc_all"]:
-        if r["locdesc1"] not in data:
-            data[r["locdesc1"]] = {}
-        if r["locdesc2"] not in data[r["locdesc1"]]:
-            data[r["locdesc1"]][r["locdesc2"]] = {}
-        data[r["locdesc1"]][r["locdesc2"]][r["locdesc3"]] = r["count"]
-    n_data = {
-        "name": "Location Description for All Data",
-        "children": []
-    }
-    for k1 in data:
-        t_d = {"name": k1, "children": []}
-        for k2 in data[k1]:
-            t_e = {"name": "{} | {}".format(k1,k2), "children": []}
-            for k3 in data[k1][k2]:
-                t_e["children"].append({"name": "{} | {} | {}".format(k1,k2,k3), "count": data[k1][k2][k3], "alpha": 1.0})
-            t_d["children"].append(t_e)
-        n_data["children"].append(t_d)
-    result["main"]["all"]["values_locdesc"] = n_data
+        all_times = [{"x": i, "y": 0.0} for i in range(24)]
+        for c in results["time_all"]:
+            all_times[c["hour"]]["y"] = c["severity"]
+        all_times = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
+        
+        if blockid != -1:
+            result["main"]["Block "+str(blockid)] = {}
+            times = [{"x": i, "y": 0.0} for i in range(24)]
+            for c in results["time"]:
+                times[c["hour"]]["y"] = c["severity"]
+            times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "crimeall":
+        result = {
+            "error": "none",
+            "main": {
+                "all": {}
+            }
+        }
+        
+        data = {}
+        for r in results["crmtyp_all"]:
+            data[r["category"]] = r["count"]
+        n_data = {
+            "name": "Crime Type for All Data",
+            "children": []
+        }
+        for k1 in data:
+            t_d = {"name": k1, "count": data[k1]}
+            n_data["children"].append(t_d)
+        result["main"]["all"]["values_type"] = n_data
 
-    if blockid != -1:
-        result["main"]["Block "+str(blockid)] = {}
-        result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date"], key=lambda k: k['date'])]
-        times = [{"x": i, "y": 0.0} for i in range(24)]
-        for c in results["time"]:
-            times[c["hour"]]["y"] = c["severity"]
-        times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
-        result["main"]["Block "+str(blockid)]["values_time"] = times
-        dows = [{"x": i, "y": 0.0} for i in range(7)]
-        for c in results["dotw"]:
-            dows[c["dow"]]["y"] = c["severity"]
-        dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
-        result["main"]["Block "+str(blockid)]["values_dow"] = dows
-
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "crimeblock":
+        result = {
+            "error": "none",
+            "main": {
+                "Block "+str(blockid): {}
+            }
+        }
         data = {}
         for r in results["crmtyp"]:
             data[r["category"]] = r["count"]
@@ -245,7 +240,53 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             t_d = {"name": k1, "count": data[k1]}
             n_data["children"].append(t_d)
         result["main"]["Block "+str(blockid)]["values_type"] = n_data
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "locall":
+        result = {
+            "error": "none",
+            "main": {
+                "all": {
+                    "values_locdesc": []
+                }
+            }
+        }
 
+        data = {}
+        for r in results["locdesc_all"]:
+            if r["locdesc1"] not in data:
+                data[r["locdesc1"]] = {}
+            if r["locdesc2"] not in data[r["locdesc1"]]:
+                data[r["locdesc1"]][r["locdesc2"]] = {}
+            data[r["locdesc1"]][r["locdesc2"]][r["locdesc3"]] = r["count"]
+        n_data = {
+            "name": "Location Description for All Data",
+            "children": []
+        }
+        for k1 in data:
+            t_d = {"name": k1, "children": []}
+            for k2 in data[k1]:
+                t_e = {"name": "{} | {}".format(k1,k2), "children": []}
+                for k3 in data[k1][k2]:
+                    t_e["children"].append({"name": "{} | {} | {}".format(k1,k2,k3), "count": data[k1][k2][k3], "alpha": 1.0})
+                t_d["children"].append(t_e)
+            n_data["children"].append(t_d)
+        result["main"]["all"]["values_locdesc"] = n_data
+
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "locblock" and config_dict["blockid"] != -1:
+        result = {
+            "error": "none",
+            "main": {
+                "Block "+str(config_dict["blockid"]): {}
+            }
+        }
+        
         data = {}
         for r in results["locdesc"]:
             if r["locdesc1"] not in data:
@@ -266,7 +307,37 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 t_d["children"].append(t_e)
             n_data["children"].append(t_d)
         result["main"]["Block "+str(blockid)]["values_locdesc"] = n_data
-    job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
-    SESSION.add(job)
-    SESSION.commit()
-    return job.id
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "":
+        result = {
+            "error": "none",
+            "main": {
+                "all": {
+                    "values_date": []
+                }
+            },
+            "other": [],
+            "timeline": []
+        }
+        
+        map_df = pd.DataFrame(results["map"])
+        map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
+        result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
+        for i in map_cross.index:
+            result["other"].append({
+                "id": i,
+                "values": list(map_cross.loc[i,:].values)
+            })
+        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date_all"], key=lambda k: k['date'])]
+        
+        if blockid != -1:
+            result["main"]["Block "+str(blockid)] = {}
+            result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date"], key=lambda k: k['date'])]
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    raise Exception('INCORRECT FORMAT')
