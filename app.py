@@ -229,10 +229,6 @@ def download_data(cityid):
         config_dict["cyear"] = int(request.args.get("cyear"))
         config_dict["stime"] = int(request.args.get("s_t","0"))
         config_dict["etime"] = int(request.args.get("e_t","24"))
-        config_dict["loadtype"] = request.args.get("type","")
-        poss_load = ["","time","dow","crimeall","crimeblock","locall","locblock"]
-        if config_dict["loadtype"] not in poss_load:
-            config_dict["loadtype"] = ""
         dotw = request.args.get("dotw","")
         crimetypes = request.args.get("crimetypes","").split(",")
         locdesc1 = request.args.get("locdesc1","").split(",")
@@ -287,6 +283,10 @@ def get_city_data(cityid):
         config_dict["edt"] = request.args.get("edt","01/01/2100")
         config_dict["stime"] = request.args.get("stime","0")
         config_dict["etime"] = request.args.get("etime","23")
+        config_dict["loadtype"] = request.args.get("type","")
+        poss_load = ["","time","dow","crimeall","crimeblock","locall","locblock"]
+        if config_dict["loadtype"] not in poss_load:
+            config_dict["loadtype"] = ""
         if config_dict["sdt"] == "//":
             config_dict["sdt"] = "01/01/1900"
         if config_dict["edt"] == "//":
