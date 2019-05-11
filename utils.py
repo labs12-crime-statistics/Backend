@@ -116,20 +116,20 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     }
 
     base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
-        if dotw != "":
-            config_dict["dotw"] = [int(x) for x in dotw.split(",")]
-            base_list["dow"] = query_dotw
-            mult_dow = 7.0 / len(config_dict["dotw"])
-        if crimetypes != "":
-            config_dict["crimetypes"] = crimetypes.split(",")
-            base_list["crime"] = query_crmtyp
-        if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
-            config_dict["lockeys"] = []
-            for i, _ in enumerate(locdesc1):
-                config_dict["lockeys"].append([locdesc1[i], locdesc2[i], locdesc3[i]])
-            base_list["locdesc"] = query_locdesc
-        if blockid != -1:
-            config_dict["blockid"] = blockid
+    if dotw != "":
+        config_dict["dotw"] = [int(x) for x in dotw.split(",")]
+        base_list["dow"] = query_dotw
+        mult_dow = 7.0 / len(config_dict["dotw"])
+    if crimetypes != "":
+        config_dict["crimetypes"] = crimetypes.split(",")
+        base_list["crime"] = query_crmtyp
+    if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
+        config_dict["lockeys"] = []
+        for i, _ in enumerate(locdesc1):
+            config_dict["lockeys"].append([locdesc1[i], locdesc2[i], locdesc3[i]])
+        base_list["locdesc"] = query_locdesc
+    if blockid != -1:
+        config_dict["blockid"] = blockid
 
     charts = {
         "map": "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
