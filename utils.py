@@ -187,14 +187,14 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         all_times = [{"x": i, "y": 0.0} for i in range(24)]
         for c in funcs["time_all"](SESSION.execute(text(charts["time_all"]), config_dict).fetchall()):
             all_times[c["hour"]]["y"] = c["severity"]
-        all_times = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
+        result["main"]["All"]["values_time"] = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
         
         if blockid != -1:
             result["main"]["Block "+str(blockid)] = {}
             times = [{"x": i, "y": 0.0} for i in range(24)]
             for c in funcs["time"](SESSION.execute(text(charts["time"]), config_dict).fetchall()):
                 times[c["hour"]]["y"] = c["severity"]
-            times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
+            result["main"]["Block "+str(blockid)]["values_time"] = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
