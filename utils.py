@@ -155,9 +155,10 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 }
             }
         }
+        results = []
         
         all_dows = [{"x": i, "y": 0.0} for i in range(7)]
-        for c in results["dotw_all"]:
+        for c in funcs["dotw_all"](SESSION.execute(text(charts["dotw_all"]), config_dict).fetchall()):
             all_dows[c["dow"]]["y"] = c["severity"]
         all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
         result["main"]["all"]["values_dow"] = all_dows
@@ -165,7 +166,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         if blockid != -1:
             result["main"]["Block "+str(blockid)] = {}
             dows = [{"x": i, "y": 0.0} for i in range(7)]
-            for c in results["dotw"]:
+            for c in funcs["dotw"](SESSION.execute(text(charts["dotw"]), config_dict).fetchall()):
                 dows[c["dow"]]["y"] = c["severity"]
             dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
             result["main"]["Block "+str(blockid)]["values_dow"] = dows
@@ -184,14 +185,14 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
 
         all_times = [{"x": i, "y": 0.0} for i in range(24)]
-        for c in results["time_all"]:
+        for c in funcs["time_all"](SESSION.execute(text(charts["time_all"]), config_dict).fetchall()):
             all_times[c["hour"]]["y"] = c["severity"]
         all_times = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
         
         if blockid != -1:
             result["main"]["Block "+str(blockid)] = {}
             times = [{"x": i, "y": 0.0} for i in range(24)]
-            for c in results["time"]:
+            for c in funcs["time"](SESSION.execute(text(charts["time"]), config_dict).fetchall()):
                 times[c["hour"]]["y"] = c["severity"]
             times = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
@@ -207,7 +208,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         data = {}
-        for r in results["crmtyp_all"]:
+        for r in funcs["crmtyp_all"](SESSION.execute(text(charts["crmtyp_all"]), config_dict).fetchall()):
             data[r["category"]] = r["count"]
         n_data = {
             "name": "Crime Type for All Data",
@@ -222,7 +223,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         SESSION.add(job)
         SESSION.commit()
         return job.id
-    elif config_dict["loadtype"] == "crimeblock":
+    elif config_dict["loadtype"] == "crimeblock" and config_dict["blockid"] != "":
         result = {
             "error": "none",
             "main": {
@@ -230,7 +231,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             }
         }
         data = {}
-        for r in results["crmtyp"]:
+        for r in funcs["crmtyp"](SESSION.execute(text(charts["crmtyp"]), config_dict).fetchall()):
             data[r["category"]] = r["count"]
         n_data = {
             "name": "Crime Type for All Data",
@@ -255,7 +256,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
 
         data = {}
-        for r in results["locdesc_all"]:
+        for r in funcs["locdesc_all"](SESSION.execute(text(charts["locdesc_all"]), config_dict).fetchall()):
             if r["locdesc1"] not in data:
                 data[r["locdesc1"]] = {}
             if r["locdesc2"] not in data[r["locdesc1"]]:
@@ -288,7 +289,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         data = {}
-        for r in results["locdesc"]:
+        for r in funcs["locdesc"](SESSION.execute(text(charts["locdesc"]), config_dict).fetchall()):
             if r["locdesc1"] not in data:
                 data[r["locdesc1"]] = {}
             if r["locdesc2"] not in data[r["locdesc1"]]:
@@ -323,7 +324,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             "timeline": []
         }
         
-        map_df = pd.DataFrame(results["map"])
+        map_df = pd.DataFrame(funcs["map"](SESSION.execute(text(charts["map"]), config_dict).fetchall()))
         map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
         result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
         for i in map_cross.index:
@@ -331,11 +332,11 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 "id": i,
                 "values": list(map_cross.loc[i,:].values)
             })
-        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date_all"], key=lambda k: k['date'])]
+        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date_all"](SESSION.execute(text(charts["date_all"]), config_dict).fetchall()), key=lambda k: k['date'])]
         
         if blockid != -1:
             result["main"]["Block "+str(blockid)] = {}
-            result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(results["date"], key=lambda k: k['date'])]
+            result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date"](SESSION.execute(text(charts["date"]), config_dict).fetchall()), key=lambda k: k['date'])]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
