@@ -229,6 +229,10 @@ def download_data(cityid):
         config_dict["cyear"] = int(request.args.get("cyear"))
         config_dict["stime"] = int(request.args.get("s_t","0"))
         config_dict["etime"] = int(request.args.get("e_t","24"))
+        config_dict["loadtype"] = request.args.get("type","")
+        poss_load = ["","time","dow","crimeall","crimeblock","locall","locblock"]
+        if config_dict["loadtype"] not in poss_load:
+            config_dict["loadtype"] = ""
         dotw = request.args.get("dotw","")
         crimetypes = request.args.get("crimetypes","").split(",")
         locdesc1 = request.args.get("locdesc1","").split(",")
