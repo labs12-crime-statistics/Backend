@@ -161,15 +161,14 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         for c in funcs["dotw_all"](SESSION.execute(text(charts["dotw_all"]), config_dict).fetchall()):
             all_dows[c["dow"]]["y"] = c["severity"]
         all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
-        results["main"]["all"]["values_dow"] = all_dows
+        result["main"]["all"]["values_dow"] = all_dows
 
         if blockid != -1:
             result["main"]["Block "+str(blockid)] = {}
             dows = [{"x": i, "y": 0.0} for i in range(7)]
             for c in funcs["dotw"](SESSION.execute(text(charts["dotw"]), config_dict).fetchall()):
                 dows[c["dow"]]["y"] = c["severity"]
-            dows = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
-            results["main"]["Block "+str(blockid)]["values_dow"] = dows
+            result["main"]["Block "+str(blockid)]["values_dow"] = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
@@ -187,7 +186,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         all_times = [{"x": i, "y": 0.0} for i in range(24)]
         for c in funcs["time_all"](SESSION.execute(text(charts["time_all"]), config_dict).fetchall()):
             all_times[c["hour"]]["y"] = c["severity"]
-        result["main"]["All"]["values_time"] = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
+        result["main"]["all"]["values_time"] = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
         
         if blockid != -1:
             result["main"]["Block "+str(blockid)] = {}
