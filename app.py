@@ -92,14 +92,19 @@ def get_location_blockid(cityid):
         lng = float(request.args.get("lng"))
         query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) AND cityid = :cityid LIMIT 1;"""
         blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng, "cityid": cityid}).fetchone()
-        print(blockid)
-        sys.stdout.flush()
-        blockid = blockid[0]
-        return Response(
-            response=json.dumps({"blockid": blockid, "error": "none"}),
-            status=200,
-            mimetype='application/json'
-        )
+        if blockid:
+            blockid = blockid[0]
+            return Response(
+                response=json.dumps({"blockid": blockid, "error": "none"}),
+                status=200,
+                mimetype='application/json'
+            )
+        else:
+            return Response(
+                response=json.dumps({"error": "NO_BLOCK"}),
+                status=200,
+                mimetype='application/json'
+            )
     except:
         return Response(
             response=json.dumps({"error": "Incorrect location format."}),
