@@ -184,12 +184,12 @@ def get_predict_data(cityid):
         dift = block_date[k]-all_dates[0]
         predictions_n[k] = np.zeros((len(all_dates),7,24))
         predictions_n[k][dift:dift+12,:,:] = prediction[k]
-        predictionall += predictions_n[k]
+        predictionall += predictions_n[k] * population[k]
         predictions_n[k] = predictions_n[k].tolist()
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    predictionall = (predictionall / len(prediction)).tolist()
+    predictionall = (predictionall / sum([population[x] for x in population])).tolist()
     return Response(
-        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n, "pop": population}),
+        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n),
         status=200,
         mimetype='application/json'
     )
