@@ -101,20 +101,6 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     mult_time = 24.0 / min(config_dict["etime"] - config_dict["stime"] + 1, 24)
     mult_dow = 1
 
-    funcs = {
-        "map": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
-        "date": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
-        "time": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
-        "dotw": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
-        "crmtyp": lambda res: [{"count": r[0], "category": r[1]} for r in res],
-        "locdesc": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res],
-        "date_all": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
-        "time_all": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
-        "dotw_all": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
-        "crmtyp_all": lambda res: [{"count": r[0], "category": r[1]} for r in res],
-        "locdesc_all": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res]
-    }
-
     base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
     if dotw != "":
         config_dict["dotw"] = [int(x) for x in dotw.split(",")]
@@ -130,6 +116,20 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         base_list["locdesc"] = query_locdesc
     if blockid != -1:
         config_dict["blockid"] = blockid
+
+    funcs = {
+        "map": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
+        "date": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
+        "time": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
+        "dotw": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
+        "crmtyp": lambda res: [{"count": r[0], "category": r[1]} for r in res],
+        "locdesc": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res],
+        "date_all": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
+        "time_all": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
+        "dotw_all": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
+        "crmtyp_all": lambda res: [{"count": r[0], "category": r[1]} for r in res],
+        "locdesc_all": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res]
+    }
 
     charts = {
         "map": "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
