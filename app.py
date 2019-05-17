@@ -189,7 +189,7 @@ def get_predict_data(cityid):
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = (predictionall / sum([population[x] for x in population])).tolist()
     return Response(
-        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n),
+        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n}),
         status=200,
         mimetype='application/json'
     )
