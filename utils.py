@@ -18,6 +18,7 @@ ENGINE  = create_engine(DB_URI)
 Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
 
+
 def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
@@ -58,38 +59,22 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
         SESSION.commit()
         return job.id
 
+
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
-    query = """SELECT MAX(categories.severity)
-        FROM (
-            SELECT SUM(crimetype.severity)/AVG(block.population) AS severity
-            FROM incident
-            INNER JOIN block ON incident.blockid = block.id
-            INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
-                AND block.population > 0
-            GROUP BY
-                incident.blockid,
-                incident.year,
-                incident.month,
-                incident.dow,
-                incident.hour
-        ) AS categories;"""
-    severity = float(SESSION.execute(text(query)).fetchone()[0]) * 24 * 7
-    query = """SELECT COUNT(*) FROM (
-        SELECT COUNT(*)
-        FROM incident
-        WHERE incident.datetime >= TO_DATE(:sdt, 'MM/DD/YYYY') AND incident.datetime <= TO_DATE(:edt, 'MM/DD/YYYY')
-        GROUP BY incident.year, incident.month
-    ) AS month_count;"""
-    months_mult = 1.0 / SESSION.execute(text(query), {"sdt": config_dict["sdt"], "edt": config_dict["edt"]}).fetchone()[0]
+    query = "SELECT * FROM max_count;"
+    severity = float(SESSION.execute(text(query)).fetchone()[0])
+    vals_s = config_dict["sdt"].split("/")
+    vals_e = config_dict["edt"].split("/")
+    months_mult = 1.0 / (vals_e[0]+vals_e[2]*12-vals_s[0]-vals_e[2]*12+1)
 
     query_base    = " FROM incident "
-    query_city    = "incident.cityid = :cityid"
-    query_date    = "incident.datetime >= TO_DATE(:sdt, 'MM/DD/YYYY') AND incident.datetime <= TO_DATE(:edt, 'MM/DD/YYYY')"
-    query_time    = "incident.hour >= :stime AND incident.hour <= :etime"
-    query_block   = "incident.blockid = :blockid"
-    query_dotw    = "incident.dow = ANY(:dotw)"
-    query_crmtyp  = "crimetype.category = ANY(:crimetypes)"
-    query_locdesc = "ARRAY [locdesctype.key1, locdesctype.key2, locdesctype.key3] = ANY(:lockeys)"
+    query_city    = "incident.cityid = {cityid}"
+    query_date    = "incident.datetime >= TO_DATE({sdt}, 'MM/DD/YYYY') AND incident.datetime <= TO_DATE({edt}, 'MM/DD/YYYY')"
+    query_time    = "incident.hour >= {stime} AND incident.hour <= {etime}"
+    query_block   = "incident.blockid = {blockid}"
+    query_dotw    = "incident.dow = ANY({dotw})"
+    query_crmtyp  = "crimetype.category = ANY({crimetypes})"
+    query_locdesc = "ARRAY [locdesctype.key1, locdesctype.key2, locdesctype.key3] = ANY({lockeys})"
     query_pop     = "block.population > 0"
     query_join    = "INNER JOIN block ON incident.blockid = block.id INNER JOIN crimetype ON incident.crimetypeid = crimetype.id INNER JOIN locdesctype ON incident.locdescid = locdesctype.id AND "
     q_base_end    = "incident.blockid, incident.year, incident.month"
@@ -117,34 +102,37 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     if blockid != -1:
         config_dict["blockid"] = blockid
 
+    maps = []
+    date = []
+    time = []
+    dow  = []
+    crimetype = []
+    locdesc   = []
+
     funcs = {
-        "map": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "blockid": int(r[1]), "month": int(r[3]), "year": int(r[2])} for r in res],
-        "date": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
-        "time": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
-        "dotw": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
-        "crmtyp": lambda res: [{"count": r[0], "category": r[1]} for r in res],
-        "locdesc": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res],
-        "date_all": lambda res: [{"severity": math.pow(mult_dow * mult_time * float(r[0]) / severity, 0.1), "month": int(r[2]), "year": int(r[1]), "date": datetime.datetime.strptime("{:02d}/{}".format(int(r[2]),r[1]), '%m/%Y')} for r in res],
-        "time_all": lambda res: [{"severity": math.pow(24 * mult_dow * months_mult * float(r[0]) / severity, 0.1), "hour": int(r[1])} for r in res],
-        "dotw_all": lambda res: [{"severity": math.pow(7 * months_mult * mult_time * float(r[0]) / severity, 0.1), "dow": int(r[1])} for r in res],
-        "crmtyp_all": lambda res: [{"count": r[0], "category": r[1]} for r in res],
-        "locdesc_all": lambda res: [{"count": r[0], "locdesc1": r[1], "locdesc2": r[2], "locdesc3": r[3]} for r in res]
+        "date": lambda res: date.append({"severity": math.pow(mult_dow * mult_time * float(res['severity']) / severity, 0.1), "month": int(res['month']), "year": int(res['year']), "date": datetime.datetime.strptime("{:02d}/{}".format(int(res['month']),res['year']), '%m/%Y')}),
+        "time": lambda res: time.append({"severity": math.pow(24 * mult_dow * months_mult * float(res['severity']) / severity, 0.1), "hour": int(res['hour'])}),
+        "dotw": lambda res: dow.append({"severity": math.pow(7 * months_mult * mult_time * float(res['severity']) / severity, 0.1), "dow": int(res['dow'])}),
+        "crmtyp": lambda res: crimetype.append({"count": res['count'], "category": r['category']}),
+        "locdesc": lambda res: locdesc.append({"count": res['count'], "locdesc1": res['locdesc1'], "locdesc2": res['locdesc2'], "locdesc3": res['locdesc3']}),
     }
 
     charts = {
-        "map": "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end,
-        "date_all": "SELECT SUM(crimetype.severity)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_date_end,
-        "time_all": "SELECT SUM(crimetype.severity)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end,
-        "dotw_all": "SELECT SUM(crimetype.severity)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end,
-        "crmtyp_all": "SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end,
-        "locdesc_all": "SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]) + " GROUP BY " + q_locdesc_end,
+        "map": ("SELECT COUNT(*)/AVG(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end).format(**config_dict),
+        "date_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_date_end).format(**config_dict),
+        "time_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end).format(**config_dict),
+        "dotw_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end).format(**config_dict),
+        "crmtyp_all": ("SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end).format(**config_dict),
+        "locdesc_all": ("SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]) + " GROUP BY " + q_locdesc_end).format(**config_dict),
     }
     if blockid != -1:
-        charts["date"] = "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]+[query_block]) + " GROUP BY " + q_date_end
-        charts["time"] = "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end
-        charts["dotw"] = "SELECT SUM(crimetype.severity)/AVG(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end
-        charts["crmtyp"] = "SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end
-        charts["locdesc"] = "SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]+[query_block]) + " GROUP BY " + q_locdesc_end
+        charts["date"] = ("SELECT COUNT(*)/AVG(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]+[query_block]) + " GROUP BY " + q_date_end).format(**config_dict)
+        charts["time"] = ("SELECT COUNT(*)/AVG(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end).format(**config_dict)
+        charts["dotw"] = ("SELECT COUNT(*)/AVG(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end).format(**config_dict)
+        charts["crmtyp"] = ("SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end).format(**config_dict)
+        charts["locdesc"] = ("SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]+[query_block]) + " GROUP BY " + q_locdesc_end).format(**config_dict)
+
+    CONN = ENGINE.connect()
 
     if config_dict["loadtype"] == "dow":        
         result = {
@@ -158,15 +146,17 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         results = []
         
         all_dows = [{"x": i, "y": 0.0} for i in range(7)]
-        for c in funcs["dotw_all"](SESSION.execute(text(charts["dotw_all"]), config_dict).fetchall()):
-            all_dows[c["dow"]]["y"] = c["severity"]
-        all_dows = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
-        result["main"]["all"]["values_dow"] = all_dows
-
+        pd.read_sql_query(charts["dotw_all"], CONN).apply(funcs["dotw"])
+        for d in dow:
+            all_dows[d["dow"]]["y"] = d["severity"]
+        result["main"]["all"]["values_dow"] = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
+        
         if blockid != -1:
+            dow = []
             result["main"]["Block "+str(blockid)] = {}
             dows = [{"x": i, "y": 0.0} for i in range(7)]
-            for c in funcs["dotw"](SESSION.execute(text(charts["dotw"]), config_dict).fetchall()):
+            pd.read_sql_query(charts["dotw"], CONN).apply(funcs["dotw"])
+            for d in dow:
                 dows[c["dow"]]["y"] = c["severity"]
             result["main"]["Block "+str(blockid)]["values_dow"] = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
@@ -184,14 +174,17 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
 
         all_times = [{"x": i, "y": 0.0} for i in range(24)]
-        for c in funcs["time_all"](SESSION.execute(text(charts["time_all"]), config_dict).fetchall()):
+        pd.read_sql_query(charts["time_all"], CONN).apply(funcs["time"])
+        for c in time:
             all_times[c["hour"]]["y"] = c["severity"]
         result["main"]["all"]["values_time"] = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
         
         if blockid != -1:
+            time = []
             result["main"]["Block "+str(blockid)] = {}
             times = [{"x": i, "y": 0.0} for i in range(24)]
-            for c in funcs["time"](SESSION.execute(text(charts["time"]), config_dict).fetchall()):
+            pd.read_sql_query(charts["time"], CONN).apply(funcs["time"])
+            for c in time
                 times[c["hour"]]["y"] = c["severity"]
             result["main"]["Block "+str(blockid)]["values_time"] = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
@@ -207,7 +200,8 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         data = {}
-        for r in funcs["crmtyp_all"](SESSION.execute(text(charts["crmtyp_all"]), config_dict).fetchall()):
+        pd.read_sql_query(charts["crmtyp_all"], CONN).apply(funcs["crmtyp"])
+        for r in crimetype:
             data[r["category"]] = r["count"]
         n_data = {
             "name": "Crime Type for All Data",
@@ -230,7 +224,8 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             }
         }
         data = {}
-        for r in funcs["crmtyp"](SESSION.execute(text(charts["crmtyp"]), config_dict).fetchall()):
+        pd.read_sql_query(charts["crmtyp"], CONN).apply(funcs["crmtyp"])
+        for r in crimetype:
             data[r["category"]] = r["count"]
         n_data = {
             "name": "Crime Type for All Data",
@@ -255,7 +250,8 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
 
         data = {}
-        for r in funcs["locdesc_all"](SESSION.execute(text(charts["locdesc_all"]), config_dict).fetchall()):
+        pd.read_sql_query(charts["locdesc_all"], CONN).apply(funcs["locdesc"])
+        for r in locdesc:
             if r["locdesc1"] not in data:
                 data[r["locdesc1"]] = {}
             if r["locdesc2"] not in data[r["locdesc1"]]:
@@ -288,7 +284,8 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         data = {}
-        for r in funcs["locdesc"](SESSION.execute(text(charts["locdesc"]), config_dict).fetchall()):
+        pd.read_sql_query(charts["locdesc"], CONN).apply(funcs["locdesc"])
+        for r in locdesc:
             if r["locdesc1"] not in data:
                 data[r["locdesc1"]] = {}
             if r["locdesc2"] not in data[r["locdesc1"]]:
@@ -323,7 +320,8 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             "timeline": []
         }
         
-        map_df = pd.DataFrame(funcs["map"](SESSION.execute(text(charts["map"]), config_dict).fetchall()))
+        map_df = pd.read_sql_query(charts["map"], CONN)
+        map_df.loc[:,"severity"] = map_df["severity"].apply(lambda x: math.pow(mult_dow * mult_time * float(x) / severity, 0.1))
         map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
         result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
         for i in map_cross.index:
@@ -331,10 +329,14 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 "id": i,
                 "values": list(map_cross.loc[i,:].values)
             })
-        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date_all"](SESSION.execute(text(charts["date_all"]), config_dict).fetchall()), key=lambda k: k['date'])]
+
+        pd.read_sql_query(charts["date_all"], CONN).apply(funcs["date"])
+        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
         
         if blockid != -1:
+            date = []
             result["main"]["Block "+str(blockid)] = {}
+            pd.read_sql_query(charts["date"], CONN).apply(funcs["date"])
             result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date"](SESSION.execute(text(charts["date"]), config_dict).fetchall()), key=lambda k: k['date'])]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
