@@ -334,7 +334,10 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 "values": list(map_cross.loc[i,:].values)
             })
 
-        pd.read_sql_query(charts["date_all"], CONN).apply(funcs["date"])
+        df = pd.read_sql_query(charts["date_all"], CONN)
+        print(df)
+        sys.stdout.flush()
+        df.apply(funcs["date"])
         result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
         
         if blockid != -1:
