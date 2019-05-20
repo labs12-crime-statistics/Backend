@@ -151,36 +151,18 @@ def get_city_shapes(cityid):
 # Get prediction values for city
 @app.route("/city/<int:cityid>/predict", methods=["GET"])
 def get_predict_data(cityid):
-    query = """SELECT MAX(categories.severity)
-        FROM (
-            SELECT SUM(crimetype.severity)/AVG(block.population) AS severity
-            FROM incident
-            INNER JOIN block ON incident.blockid = block.id
-            INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
-                AND block.population > 0
-            GROUP BY
-                incident.blockid,
-                incident.year,
-                incident.month,
-                incident.dow,
-                incident.hour
-        ) AS categories;"""
-    maxseverity = float(SESSION.execute(text(query)).fetchone()[0])
-    query = """SELECT id, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year, population FROM block WHERE cityid = :cityid AND prediction IS NOT NULL;"""
+    query = f"""SELECT id, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year, population FROM block WHERE cityid = {cityid} AND prediction IS NOT NULL;"""
     prediction = {}
     all_dates = []
     block_date = {}
     population = {}
-    for row in SESSION.execute(text(query), {"cityid": cityid}).fetchall():
-        start = int(row[3])*12+int(row[2])
-        prediction[int(row[0])] = np.frombuffer(bytes.fromhex(row[1]), dtype=np.float64).reshape((12,7,24)) / maxseverity
-        block_date[int(row[0])] = start
-        all_dates += list(range(start, start+12))
-        population[int(row[0])] = int(row[4])
-    all_dates = sorted(list(set(all_dates)))
+    df = pd.read_sql_query(query, CONN)
+    df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
+    df.loc[:,"prediction"] = df["prediction"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
+    all_dates = list(range(df["start"].min(), df["start"].max()+12))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
-    for k in prediction:
+    for k in df["prediction"]:
         dift = block_date[k]-all_dates[0]
         predictions_n[k] = np.zeros((len(all_dates),7,24))
         predictions_n[k][dift:dift+12,:,:] = prediction[k]

@@ -61,8 +61,6 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
 
 
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
-    query = "SELECT * FROM max_count;"
-    severity = float(SESSION.execute(text(query)).fetchone()[0]) * 24 * 7
     query = """SELECT COUNT(*) FROM (
         SELECT COUNT(*)
         FROM incident
@@ -114,9 +112,9 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     locdesc   = []
 
     funcs = {
-        "date": lambda res: date.append({"severity": math.pow(mult_dow * mult_time * float(res['severity']) / severity, 0.1), "month": int(res['month']), "year": int(res['year']), "date": datetime.datetime.strptime("{:02d}/{}".format(int(res['month']),int(res['year'])), '%m/%Y')}),
-        "time": lambda res: time.append({"severity": math.pow(24 * mult_dow * months_mult * float(res['severity']) / severity, 0.1), "hour": int(res['hour'])}),
-        "dotw": lambda res: dow.append({"severity": math.pow(7 * months_mult * mult_time * float(res['severity']) / severity, 0.1), "dow": int(res['dow'])}),
+        "date": lambda res: date.append({"severity": mult_dow * mult_time * float(res['severity']), "month": int(res['month']), "year": int(res['year']), "date": datetime.datetime.strptime("{:02d}/{}".format(int(res['month']),int(res['year'])), '%m/%Y')}),
+        "time": lambda res: time.append({"severity": 24 * mult_dow * months_mult * float(res['severity']), "hour": int(res['hour'])}),
+        "dotw": lambda res: dow.append({"severity": 7 * months_mult * mult_time * float(res['severity']), "dow": int(res['dow'])}),
         "crmtyp": lambda res: crimetype.append({"count": res['count'], "category": r['category']}),
         "locdesc": lambda res: locdesc.append({"count": res['count'], "locdesc1": res['locdesc1'], "locdesc2": res['locdesc2'], "locdesc3": res['locdesc3']}),
     }
@@ -325,7 +323,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         map_df = pd.read_sql_query(charts["map"], CONN)
-        map_df.loc[:,"severity"] = map_df["severity"].apply(lambda x: math.pow(mult_dow * mult_time * float(x) / severity, 0.1))
+        map_df.loc[:,"severity"] = map_df["severity"].apply(lambda x: mult_dow * mult_time * float(x))
         map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
         result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
         for i in map_cross.index:
