@@ -114,7 +114,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     locdesc   = []
 
     funcs = {
-        "date": lambda res: date.append({"severity": math.pow(mult_dow * mult_time * float(res['severity']) / severity, 0.1), "month": int(res['month']), "year": int(res['year']), "date": datetime.datetime.strptime("{:02d}/{}".format(int(res['month']),res['year']), '%m/%Y')}),
+        "date": lambda res: date.append({"severity": math.pow(mult_dow * mult_time * float(res['severity']) / severity, 0.1), "month": int(res['month']), "year": int(res['year']), "date": datetime.datetime.strptime("{:02d}/{}".format(int(res['month']),int(res['year'])), '%m/%Y')}),
         "time": lambda res: time.append({"severity": math.pow(24 * mult_dow * months_mult * float(res['severity']) / severity, 0.1), "hour": int(res['hour'])}),
         "dotw": lambda res: dow.append({"severity": math.pow(7 * months_mult * mult_time * float(res['severity']) / severity, 0.1), "dow": int(res['dow'])}),
         "crmtyp": lambda res: crimetype.append({"count": res['count'], "category": r['category']}),
