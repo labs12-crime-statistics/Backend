@@ -163,12 +163,12 @@ def get_predict_data(cityid):
     all_dates = list(range(df["start"].min(), df["start"].max()+12))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
-    for k in df["predict"]:
-        dift = block_date[k]-all_dates[0]
-        predictions_n[k] = np.zeros((len(all_dates),7,24))
-        predictions_n[k][dift:dift+12,:,:] = prediction[k]
-        predictionall += predictions_n[k] * population[k]
-        predictions_n[k] = predictions_n[k].tolist()
+    for k in df.index:
+        dift = df.loc[k,"start"]-all_dates[0]
+        predictions_n[df.loc[k,"id"]] = np.zeros((len(all_dates),7,24))
+        predictions_n[df.loc[k,"id"]][dift:dift+12,:,:] = df.loc[k,"predict"]
+        predictionall += predictions_n[df.loc[k,"id"]] * df.loc[k,"population"]
+        predictions_n[df.loc[k,"id"]] = predictions_n[df.loc[k,"id"]].tolist()
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = (predictionall / sum([population[x] for x in population])).tolist()
     return Response(
