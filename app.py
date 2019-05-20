@@ -159,11 +159,11 @@ def get_predict_data(cityid):
     with ENGINE.connect() as CONN:
         df = pd.read_sql_query(query, CONN)
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
-    df.loc[:,"prediction"] = df["prediction"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
+    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
     all_dates = list(range(df["start"].min(), df["start"].max()+12))
     predictions_n = {}
     predictionall = np.zeros((len(all_dates),7,24))
-    for k in df["prediction"]:
+    for k in df["predict"]:
         dift = block_date[k]-all_dates[0]
         predictions_n[k] = np.zeros((len(all_dates),7,24))
         predictions_n[k][dift:dift+12,:,:] = prediction[k]
