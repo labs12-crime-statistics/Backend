@@ -63,9 +63,13 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query = "SELECT * FROM max_count;"
     severity = float(SESSION.execute(text(query)).fetchone()[0])
-    vals_s = config_dict["sdt"].split("/")
-    vals_e = config_dict["edt"].split("/")
-    months_mult = 1.0 / (int(vals_e[0])+int(vals_e[2])*12-int(vals_s[0])-int(vals_e[2])*12+1)
+    query = """SELECT COUNT(*) FROM (
+        SELECT COUNT(*)
+        FROM incident
+        WHERE incident.datetime >= TO_DATE(:sdt, 'MM/DD/YYYY') AND incident.datetime <= TO_DATE(:edt, 'MM/DD/YYYY')
+        GROUP BY incident.year, incident.month
+    ) AS month_count;"""
+    months_mult = 1.0 / SESSION.execute(text(query), {"sdt": config_dict["sdt"], "edt": config_dict["edt"]}).fetchone()[0]
 
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
