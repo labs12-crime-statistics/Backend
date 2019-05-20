@@ -65,7 +65,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     severity = float(SESSION.execute(text(query)).fetchone()[0])
     vals_s = config_dict["sdt"].split("/")
     vals_e = config_dict["edt"].split("/")
-    months_mult = 1.0 / (vals_e[0]+vals_e[2]*12-vals_s[0]-vals_e[2]*12+1)
+    months_mult = 1.0 / (int(vals_e[0])+int(vals_e[2])*12-int(vals_s[0])-int(vals_e[2])*12+1)
 
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
