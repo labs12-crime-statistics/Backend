@@ -122,19 +122,19 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
     }
 
     charts = {
-        "map": ("SELECT COUNT(*)/AVG(block.population), " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end).format(**config_dict),
-        "date_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_date_end).format(**config_dict),
-        "time_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end).format(**config_dict),
-        "dotw_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end).format(**config_dict),
-        "crmtyp_all": ("SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end).format(**config_dict),
-        "locdesc_all": ("SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]) + " GROUP BY " + q_locdesc_end).format(**config_dict),
+        "map": ("SELECT COUNT(*)/AVG(block.population) AS severity, " + q_base_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_base_end).format(**config_dict),
+        "date_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)) AS severity, " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]) + " GROUP BY " + q_date_end).format(**config_dict),
+        "time_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)) AS severity, " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]) + " GROUP BY " + q_time_end).format(**config_dict),
+        "dotw_all": ("SELECT COUNT(*)/(AVG(block.population)*COUNT(DISTINCT incident.blockid)) AS severity, " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]) + " GROUP BY " + q_dotw_end).format(**config_dict),
+        "crmtyp_all": ("SELECT COUNT(*) AS count, " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]) + " GROUP BY " + q_crmtyp_end).format(**config_dict),
+        "locdesc_all": ("SELECT COUNT(*) AS count, " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]) + " GROUP BY " + q_locdesc_end).format(**config_dict),
     }
     if blockid != -1:
-        charts["date"] = ("SELECT COUNT(*)/AVG(block.population), " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]+[query_block]) + " GROUP BY " + q_date_end).format(**config_dict)
-        charts["time"] = ("SELECT COUNT(*)/AVG(block.population), " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end).format(**config_dict)
-        charts["dotw"] = ("SELECT COUNT(*)/AVG(block.population), " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end).format(**config_dict)
-        charts["crmtyp"] = ("SELECT COUNT(*), " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end).format(**config_dict)
-        charts["locdesc"] = ("SELECT COUNT(*), " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]+[query_block]) + " GROUP BY " + q_locdesc_end).format(**config_dict)
+        charts["date"] = ("SELECT COUNT(*)/AVG(block.population) AS severity, " + q_date_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list]+[query_block]) + " GROUP BY " + q_date_end).format(**config_dict)
+        charts["time"] = ("SELECT COUNT(*)/AVG(block.population) AS severity, " + q_time_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "time"]+[query_block]) + " GROUP BY " + q_time_end).format(**config_dict)
+        charts["dotw"] = ("SELECT COUNT(*)/AVG(block.population) AS severity, " + q_dotw_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "dow"]+[query_block]) + " GROUP BY " + q_dotw_end).format(**config_dict)
+        charts["crmtyp"] = ("SELECT COUNT(*) AS count, " + q_crmtyp_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "crime"]+[query_block]) + " GROUP BY " + q_crmtyp_end).format(**config_dict)
+        charts["locdesc"] = ("SELECT COUNT(*) AS count, " + q_locdesc_end + query_base + query_join + " AND ".join([base_list[k] for k in base_list if k != "locdesc"]+[query_block]) + " GROUP BY " + q_locdesc_end).format(**config_dict)
 
     CONN = ENGINE.connect()
 
