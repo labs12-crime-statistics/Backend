@@ -62,7 +62,7 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
 
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query = "SELECT * FROM max_count;"
-    severity = float(SESSION.execute(text(query)).fetchone()[0])
+    severity = float(SESSION.execute(text(query)).fetchone()[0]) * 24 * 7
     query = """SELECT COUNT(*) FROM (
         SELECT COUNT(*)
         FROM incident
