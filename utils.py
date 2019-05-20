@@ -184,7 +184,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             result["main"]["Block "+str(blockid)] = {}
             times = [{"x": i, "y": 0.0} for i in range(24)]
             pd.read_sql_query(charts["time"], CONN).apply(funcs["time"])
-            for c in time
+            for c in time:
                 times[c["hour"]]["y"] = c["severity"]
             result["main"]["Block "+str(blockid)]["values_time"] = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
