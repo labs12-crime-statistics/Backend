@@ -150,7 +150,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         results = []
         
         all_dows = [{"x": i, "y": 0.0} for i in range(7)]
-        pd.read_sql_query(charts["dotw_all"], CONN).apply(funcs["dotw"])
+        pd.read_sql_query(charts["dotw_all"], CONN).apply(funcs["dotw"], axis=1)
         for d in dow:
             all_dows[d["dow"]]["y"] = d["severity"]
         result["main"]["all"]["values_dow"] = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
@@ -159,7 +159,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             dow = []
             result["main"]["Block "+str(blockid)] = {}
             dows = [{"x": i, "y": 0.0} for i in range(7)]
-            pd.read_sql_query(charts["dotw"], CONN).apply(funcs["dotw"])
+            pd.read_sql_query(charts["dotw"], CONN).apply(funcs["dotw"], axis=1)
             for d in dow:
                 dows[c["dow"]]["y"] = c["severity"]
             result["main"]["Block "+str(blockid)]["values_dow"] = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
@@ -178,7 +178,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
 
         all_times = [{"x": i, "y": 0.0} for i in range(24)]
-        pd.read_sql_query(charts["time_all"], CONN).apply(funcs["time"])
+        pd.read_sql_query(charts["time_all"], CONN).apply(funcs["time"], axis=1)
         for c in time:
             all_times[c["hour"]]["y"] = c["severity"]
         result["main"]["all"]["values_time"] = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
@@ -187,7 +187,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             time = []
             result["main"]["Block "+str(blockid)] = {}
             times = [{"x": i, "y": 0.0} for i in range(24)]
-            pd.read_sql_query(charts["time"], CONN).apply(funcs["time"])
+            pd.read_sql_query(charts["time"], CONN).apply(funcs["time"], axis=1)
             for c in time:
                 times[c["hour"]]["y"] = c["severity"]
             result["main"]["Block "+str(blockid)]["values_time"] = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
@@ -204,7 +204,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         data = {}
-        pd.read_sql_query(charts["crmtyp_all"], CONN).apply(funcs["crmtyp"])
+        pd.read_sql_query(charts["crmtyp_all"], CONN).apply(funcs["crmtyp"], axis=1)
         for r in crimetype:
             data[r["category"]] = r["count"]
         n_data = {
@@ -228,7 +228,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             }
         }
         data = {}
-        pd.read_sql_query(charts["crmtyp"], CONN).apply(funcs["crmtyp"])
+        pd.read_sql_query(charts["crmtyp"], CONN).apply(funcs["crmtyp"], axis=1)
         for r in crimetype:
             data[r["category"]] = r["count"]
         n_data = {
@@ -254,7 +254,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
 
         data = {}
-        pd.read_sql_query(charts["locdesc_all"], CONN).apply(funcs["locdesc"])
+        pd.read_sql_query(charts["locdesc_all"], CONN).apply(funcs["locdesc"], axis=1)
         for r in locdesc:
             if r["locdesc1"] not in data:
                 data[r["locdesc1"]] = {}
@@ -288,7 +288,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         }
         
         data = {}
-        pd.read_sql_query(charts["locdesc"], CONN).apply(funcs["locdesc"])
+        pd.read_sql_query(charts["locdesc"], CONN).apply(funcs["locdesc"], axis=1)
         for r in locdesc:
             if r["locdesc1"] not in data:
                 data[r["locdesc1"]] = {}
@@ -334,16 +334,13 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 "values": list(map_cross.loc[i,:].values)
             })
 
-        df = pd.read_sql_query(charts["date_all"], CONN)
-        print(df)
-        sys.stdout.flush()
-        df.apply(funcs["date"])
+        pd.read_sql_query(charts["date_all"], CONN).apply(funcs["date"], axis=1)
         result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
         
         if blockid != -1:
             date = []
             result["main"]["Block "+str(blockid)] = {}
-            pd.read_sql_query(charts["date"], CONN).apply(funcs["date"])
+            pd.read_sql_query(charts["date"], CONN).apply(funcs["date"], axis=1)
             result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date"](SESSION.execute(text(charts["date"]), config_dict).fetchall()), key=lambda k: k['date'])]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
