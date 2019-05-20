@@ -156,7 +156,8 @@ def get_predict_data(cityid):
     all_dates = []
     block_date = {}
     population = {}
-    df = pd.read_sql_query(query, CONN)
+    with ENGINE.connect() as CONN:
+        df = pd.read_sql_query(query, CONN)
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
     df.loc[:,"prediction"] = df["prediction"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
     all_dates = list(range(df["start"].min(), df["start"].max()+12))
