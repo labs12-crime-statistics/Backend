@@ -158,6 +158,8 @@ def get_predict_data(cityid):
     population = {}
     with ENGINE.connect() as CONN:
         df = pd.read_sql_query(query, CONN)
+    print(float(df["population"].sum()))
+    sys.stdout.flush()
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
     df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
     all_dates = list(range(df["start"].min(), df["start"].max()+12))
@@ -170,7 +172,7 @@ def get_predict_data(cityid):
         predictionall += predictions_n[str(df.loc[k,"id"])] * df.loc[k,"population"]
         predictions_n[str(df.loc[k,"id"])] = predictions_n[str(df.loc[k,"id"])].tolist()
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    predictionall = (predictionall / sum([population[x] for x in population])).tolist()
+    predictionall = (predictionall / float(df["population"].sum())).tolist()
     return Response(
         response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n}),
         status=200,
