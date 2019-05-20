@@ -69,7 +69,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
 
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
-    query_date    = "incident.datetime >= TO_DATE({sdt}, 'MM/DD/YYYY') AND incident.datetime <= TO_DATE({edt}, 'MM/DD/YYYY')"
+    query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND incident.datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
     query_time    = "incident.hour >= {stime} AND incident.hour <= {etime}"
     query_block   = "incident.blockid = {blockid}"
     query_dotw    = "incident.dow = ANY({dotw})"
