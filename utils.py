@@ -144,9 +144,9 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
 
     base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
     if dotw != "":
+        mult_dow = 7.0 / len(dotw.split(","))
         config_dict["dotw"] = "ARRAY[{}]".format(dotw)
         base_list["dow"] = query_dotw
-        mult_dow = 7.0 / len(config_dict["dotw"])
     if crimetypes != "":
         config_dict["crimetypes"] = "ARRAY[{}]".format(crimetypes)
         base_list["crime"] = query_crmtyp
@@ -419,7 +419,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
             "error": "none",
             "main": {}
         }
-        
+
         result["main"]["Block "+str(blockid)] = {}
         pd.read_sql_query(charts["date"], CONN).apply(funcs["date"], axis=1)
         result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
