@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from decouple import config
 from geomet import wkb, wkt
 import pandas as pd
+import numpy as np
 
 import json
 import datetime
