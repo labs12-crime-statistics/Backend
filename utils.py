@@ -116,8 +116,6 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
 
 
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
-    print(config_dict)
-    sys.stdout.flush()
     query = """SELECT COUNT(*) FROM (
         SELECT COUNT(*)
         FROM incident
@@ -212,7 +210,6 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         SESSION.add(job)
         SESSION.commit()
         return job.id
-        
     elif config_dict["loadtype"] == "dow" and blockid != -1:
         result = {
             "error": "none",
@@ -248,7 +245,6 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         SESSION.add(job)
         SESSION.commit()
         return job.id
-        
     elif config_dict["loadtype"] == "timeall" and blockid != -1:
         result = {
             "error": "none",
@@ -400,7 +396,10 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 "id": i,
                 "values": list(map_cross.loc[i,:].values)
             })
-    
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
     elif config_dict["loadtype"] == "dateall":
         result = {
             "error": "none",
@@ -415,7 +414,6 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         SESSION.add(job)
         SESSION.commit()
         return job.id
-        
     elif config_dict["loadtype"] == "date" and blockid != -1:
         result = {
             "error": "none",
