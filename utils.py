@@ -388,7 +388,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         sev = SESSION.execute(text("SELECT * FROM max_count;")).fetchone()[0]
         
         map_df = pd.read_sql_query(charts["map"], CONN)
-        map_df.loc[:,"severity"] = map_df["severity"].apply(lambda x: (mult_dow * mult_time * float(x) / float(sev))**0.1)
+        map_df.loc[:,"severity"] = map_df["severity"].apply(lambda x: (mult_dow * mult_time * float(x) / float(sev))**0.2)
         map_cross = pd.crosstab(map_df["blockid"], [map_df["year"], map_df["month"]], values=map_df["severity"], aggfunc='sum').fillna(0.0)
         result["timeline"] = [{"year": c[0], "month": c[1]} for c in map_cross]
         for i in map_cross.index:
