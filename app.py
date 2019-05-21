@@ -18,11 +18,11 @@ import io
 import sys
 
 from models import *
-from utils import get_data, get_download
+from utils import get_data, get_download, get_shapes, get_predictions
 
 
 # Create Flask app and allow for CORS
-app     = Flask(__name__)
+app       = Flask(__name__)
 redis_url = config('REDIS_URL')
 q         = Queue('high', connection=redis.from_url(redis_url))
 CORS(app)
@@ -118,66 +118,87 @@ def get_location_blockid(cityid):
 def get_city_shapes(cityid):
     """Get all blocks for a specific City id with their respective id, shape
         and the city center coordinates."""
-    if SESSION.query(City).filter(City.id == cityid).count() > 0:
-        citycoords_req = SESSION.query(City.location).filter(City.id == cityid)
-        citycoords_bytes = citycoords_req.one()[0].data.tobytes()
-        citycoords = wkb.loads(citycoords_bytes)["coordinates"]
-        blocks = [{
-            "id": block.id,
-            "shape": wkb.loads(block.shape.data.tobytes())["coordinates"]
-        } for block in
-            SESSION.query(Blocks).filter(Blocks.cityid == cityid).all()]
-        zipcodes = [{
-            "zipcode": zipcode.zipcode,
-            "shape": wkb.loads(zipcode.shape.data.tobytes())["coordinates"]
-        } for zipcode in
-            SESSION.query(ZipcodeGeom).filter(ZipcodeGeom.cityid == cityid).all()]
+    query_id = request.args.get('job')
+    if query_id:
+        found_job = q.fetch_job(query_id)
+        if found_job:
+            output = get_status(found_job)
+            if output["status"] == "completed":
+                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                output["id"] = query_id
+                output["result"] = job.result
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-1)).delete()
+                SESSION.commit()
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                output["id"] = query_id
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+        else:
+            output = { 'id': None, 'error_message': 'No job exists with the id number ' + query_id }
+            return Response(
+                response=json.dumps(output),
+                status=403,
+                mimetype='application/json'
+            )
+    else:
+        new_job = q.enqueue(get_shapes, cityid)
+        output = get_status(new_job)
         return Response(
-            response=json.dumps({
-                "error": "none",
-                "blocks": blocks,
-                "zipcodes": zipcodes,
-                "citylocation": citycoords}),
+            response=json.dumps(output),
             status=200,
             mimetype='application/json'
         )
-    return Response(
-        response=json.dumps({"error": "Incorrect city id value."}),
-        status=404,
-        mimetype='application/json'
-    )
 
 
 # Get prediction values for city
 @app.route("/city/<int:cityid>/predict", methods=["GET"])
 def get_predict_data(cityid):
-    query = f"""SELECT id, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year, population FROM block WHERE cityid = {cityid} AND prediction IS NOT NULL;"""
-    prediction = {}
-    all_dates = []
-    block_date = {}
-    population = {}
-    with ENGINE.connect() as CONN:
-        df = pd.read_sql_query(query, CONN)
-    print(float(df["population"].sum()))
-    sys.stdout.flush()
-    df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
-    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
-    all_dates = list(range(df["start"].min(), df["start"].max()+12))
-    predictions_n = {}
-    predictionall = np.zeros((len(all_dates),7,24))
-    for k in df.index:
-        dift = df.loc[k,"start"]-all_dates[0]
-        predictions_n[str(df.loc[k,"id"])] = np.zeros((len(all_dates),7,24))
-        predictions_n[str(df.loc[k,"id"])][dift:dift+12,:,:] = df.loc[k,"predict"]
-        predictionall += predictions_n[str(df.loc[k,"id"])] * df.loc[k,"population"]
-        predictions_n[str(df.loc[k,"id"])] = predictions_n[str(df.loc[k,"id"])].tolist()
-    all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    predictionall = (predictionall / float(df["population"].sum())).tolist()
-    return Response(
-        response=json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n}),
-        status=200,
-        mimetype='application/json'
-    )
+    query_id = request.args.get('job')
+    if query_id:
+        found_job = q.fetch_job(query_id)
+        if found_job:
+            output = get_status(found_job)
+            if output["status"] == "completed":
+                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                output["id"] = query_id
+                output["result"] = job.result
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-1)).delete()
+                SESSION.commit()
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                output["id"] = query_id
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+        else:
+            output = { 'id': None, 'error_message': 'No job exists with the id number ' + query_id }
+            return Response(
+                response=json.dumps(output),
+                status=403,
+                mimetype='application/json'
+            )
+    else:
+        new_job = q.enqueue(get_predictions, cityid)
+        output = get_status(new_job)
+        return Response(
+            response=json.dumps(output),
+            status=200,
+            mimetype='application/json'
+        )
 
 
 # Start job in queue or download incident data for city
@@ -276,7 +297,7 @@ def get_city_data(cityid):
         config_dict["stime"] = request.args.get("stime","0")
         config_dict["etime"] = request.args.get("etime","23")
         config_dict["loadtype"] = request.args.get("type","")
-        poss_load = ["","time","dow","crimeall","crimeblock","locall","locblock"]
+        poss_load = ["map","date","dateall","time","timeall","dow","dowall","crimeall","crimeblock","locall","locblock"]
         if config_dict["loadtype"] not in poss_load:
             config_dict["loadtype"] = ""
         if config_dict["sdt"] == "//":
