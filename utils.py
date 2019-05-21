@@ -403,9 +403,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         result = {
             "error": "none",
             "main": {
-                "all": {
-                    "values_date"
-                }
+                "all": {}
             }
         }
 
