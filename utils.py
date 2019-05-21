@@ -116,6 +116,8 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
 
 
 def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
+    print(config_dict)
+    sys.stdout.flush()
     query = """SELECT COUNT(*) FROM (
         SELECT COUNT(*)
         FROM incident
