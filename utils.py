@@ -19,6 +19,61 @@ Session = sessionmaker(bind=ENGINE)
 SESSION = Session()
 
 
+def get_shapes(cityid):
+    citycoords_req = SESSION.query(City.location).filter(City.id == cityid)
+    citycoords_bytes = citycoords_req.one()[0].data.tobytes()
+    citycoords = wkb.loads(citycoords_bytes)["coordinates"]
+    blocks = [{
+        "id": block.id,
+        "shape": wkb.loads(block.shape.data.tobytes())["coordinates"]
+    } for block in
+        SESSION.query(Blocks).filter(Blocks.cityid == cityid).all()]
+    zipcodes = [{
+        "zipcode": zipcode.zipcode,
+        "shape": wkb.loads(zipcode.shape.data.tobytes())["coordinates"]
+    } for zipcode in
+        SESSION.query(ZipcodeGeom).filter(ZipcodeGeom.cityid == cityid).all()]
+    result=json.dumps({
+            "error": "none",
+            "blocks": blocks,
+            "zipcodes": zipcodes,
+            "citylocation": citycoords})
+    job = Job(result=result, datetime=datetime.datetime.utcnow())
+    SESSION.add(job)
+    SESSION.commit()
+    return job.id
+
+
+def get_predictions(cityid):
+    query = f"""SELECT id, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year, population FROM block WHERE cityid = {cityid} AND prediction IS NOT NULL;"""
+    prediction = {}
+    all_dates = []
+    block_date = {}
+    population = {}
+    with ENGINE.connect() as CONN:
+        df = pd.read_sql_query(query, CONN)
+    print(float(df["population"].sum()))
+    sys.stdout.flush()
+    df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
+    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
+    all_dates = list(range(df["start"].min(), df["start"].max()+12))
+    predictions_n = {}
+    predictionall = np.zeros((len(all_dates),7,24))
+    for k in df.index:
+        dift = df.loc[k,"start"]-all_dates[0]
+        predictions_n[str(df.loc[k,"id"])] = np.zeros((len(all_dates),7,24))
+        predictions_n[str(df.loc[k,"id"])][dift:dift+12,:,:] = df.loc[k,"predict"]
+        predictionall += predictions_n[str(df.loc[k,"id"])] * df.loc[k,"population"]
+        predictions_n[str(df.loc[k,"id"])] = predictions_n[str(df.loc[k,"id"])].tolist()
+    all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
+    predictionall = (predictionall / float(df["population"].sum())).tolist()
+    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n})
+    job = Job(result=result, datetime=datetime.datetime.utcnow())
+    SESSION.add(job)
+    SESSION.commit()
+    return job.id
+
+
 def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
@@ -136,7 +191,7 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
 
     CONN = ENGINE.connect()
 
-    if config_dict["loadtype"] == "dow":        
+    if config_dict["loadtype"] == "dowall":        
         result = {
             "error": "none",
             "main": {
@@ -145,27 +200,34 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 }
             }
         }
-        results = []
         
         all_dows = [{"x": i, "y": 0.0} for i in range(7)]
         pd.read_sql_query(charts["dotw_all"], CONN).apply(funcs["dotw"], axis=1)
         for d in dow:
             all_dows[d["dow"]]["y"] = d["severity"]
         result["main"]["all"]["values_dow"] = [{"x": -1, "y": all_dows[-1]["y"]}] + all_dows + [{"x": 7, "y": all_dows[0]["y"]}]
-        
-        if blockid != -1:
-            dow = []
-            result["main"]["Block "+str(blockid)] = {}
-            dows = [{"x": i, "y": 0.0} for i in range(7)]
-            pd.read_sql_query(charts["dotw"], CONN).apply(funcs["dotw"], axis=1)
-            for d in dow:
-                dows[c["dow"]]["y"] = c["severity"]
-            result["main"]["Block "+str(blockid)]["values_dow"] = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
         return job.id
-    elif config_dict["loadtype"] == "time":
+        
+    elif config_dict["loadtype"] == "dow" and blockid != -1:
+        result = {
+            "error": "none",
+            "main": {}
+        }
+
+        result["main"]["Block "+str(blockid)] = {}
+        dows = [{"x": i, "y": 0.0} for i in range(7)]
+        pd.read_sql_query(charts["dotw"], CONN).apply(funcs["dotw"], axis=1)
+        for d in dow:
+            dows[c["dow"]]["y"] = c["severity"]
+        result["main"]["Block "+str(blockid)]["values_dow"] = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    elif config_dict["loadtype"] == "timeall":
         result = {
             "error": "none",
             "main": {
@@ -180,15 +242,23 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         for c in time:
             all_times[c["hour"]]["y"] = c["severity"]
         result["main"]["all"]["values_time"] = [{"x": -1, "y": all_times[-1]["y"]}] + all_times + [{"x": 24, "y": all_times[0]["y"]}, {"x": 25, "y": all_times[1]["y"]}]
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
         
-        if blockid != -1:
-            time = []
-            result["main"]["Block "+str(blockid)] = {}
-            times = [{"x": i, "y": 0.0} for i in range(24)]
-            pd.read_sql_query(charts["time"], CONN).apply(funcs["time"], axis=1)
-            for c in time:
-                times[c["hour"]]["y"] = c["severity"]
-            result["main"]["Block "+str(blockid)]["values_time"] = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
+    elif config_dict["loadtype"] == "timeall" and blockid != -1:
+        result = {
+            "error": "none",
+            "main": {}
+        }
+
+        result["main"]["Block "+str(blockid)] = {}
+        times = [{"x": i, "y": 0.0} for i in range(24)]
+        pd.read_sql_query(charts["time"], CONN).apply(funcs["time"], axis=1)
+        for c in time:
+            times[c["hour"]]["y"] = c["severity"]
+        result["main"]["Block "+str(blockid)]["values_time"] = [{"x": -1, "y": times[-1]["y"]}] + times + [{"x": 24, "y": times[0]["y"]}, {"x": 25, "y": times[1]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
@@ -310,14 +380,9 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
         SESSION.add(job)
         SESSION.commit()
         return job.id
-    elif config_dict["loadtype"] == "":
+    elif config_dict["loadtype"] == "map":
         result = {
             "error": "none",
-            "main": {
-                "all": {
-                    "values_date": []
-                }
-            },
             "other": [],
             "timeline": []
         }
@@ -333,17 +398,36 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
                 "id": i,
                 "values": list(map_cross.loc[i,:].values)
             })
+    
+    elif config_dict["loadtype"] == "dateall":
+        result = {
+            "error": "none",
+            "main": {
+                "all": {
+                    "values_date"
+                }
+            }
+        }
 
         pd.read_sql_query(charts["date_all"], CONN).apply(funcs["date"], axis=1)
         result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
-        
-        if blockid != -1:
-            date = []
-            result["main"]["Block "+str(blockid)] = {}
-            pd.read_sql_query(charts["date"], CONN).apply(funcs["date"], axis=1)
-            result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date"](SESSION.execute(text(charts["date"]), config_dict).fetchall()), key=lambda k: k['date'])]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
         return job.id
-    raise Exception('INCORRECT FORMAT')
+        
+    elif config_dict["loadtype"] == "date" and blockid != -1:
+        result = {
+            "error": "none",
+            "main": {}
+        }
+
+        date = []
+        result["main"]["Block "+str(blockid)] = {}
+        pd.read_sql_query(charts["date"], CONN).apply(funcs["date"], axis=1)
+        result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(funcs["date"](SESSION.execute(text(charts["date"]), config_dict).fetchall()), key=lambda k: k['date'])]
+        job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
+        SESSION.add(job)
+        SESSION.commit()
+        return job.id
+    return "ERROR"
