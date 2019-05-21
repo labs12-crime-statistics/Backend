@@ -127,7 +127,7 @@ def get_city_shapes(cityid):
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-1)).delete()
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
                 return Response(
                     response=json.dumps(output),
@@ -170,7 +170,7 @@ def get_predict_data(cityid):
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-1)).delete()
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
                 return Response(
                     response=json.dumps(output),
@@ -213,7 +213,7 @@ def download_data(cityid):
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-1)).delete()
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
                 return Response(
                     response=json.dumps(output),
@@ -268,7 +268,7 @@ def get_city_data(cityid):
             if output["status"] == "completed":
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-1)).delete()
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
                 return Response(
                     response=json.dumps(output),

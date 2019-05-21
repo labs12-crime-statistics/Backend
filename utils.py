@@ -53,8 +53,6 @@ def get_predictions(cityid):
     population = {}
     with ENGINE.connect() as CONN:
         df = pd.read_sql_query(query, CONN)
-    print(float(df["population"].sum()))
-    sys.stdout.flush()
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
     df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
     all_dates = list(range(df["start"].min(), df["start"].max()+12))
@@ -146,16 +144,17 @@ def get_data(config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc
 
     base_list = {"city": query_city, "date": query_date, "time": query_time, "pop": query_pop}
     if dotw != "":
-        config_dict["dotw"] = [int(x) for x in dotw.split(",")]
+        config_dict["dotw"] = "ARRAY[{}]".format(dotw)
         base_list["dow"] = query_dotw
         mult_dow = 7.0 / len(config_dict["dotw"])
     if crimetypes != "":
-        config_dict["crimetypes"] = crimetypes.split(",")
+        config_dict["crimetypes"] = "ARRAY[{}]".format(crimetypes)
         base_list["crime"] = query_crmtyp
     if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
         config_dict["lockeys"] = []
         for i, _ in enumerate(locdesc1):
-            config_dict["lockeys"].append([locdesc1[i], locdesc2[i], locdesc3[i]])
+            config_dict["lockeys"].append("["+"".join([locdesc1[i], locdesc2[i], locdesc3[i]])+"]")
+        config_dict["lockeys"] = "ARRAY[{}]".format(",".join(config_dict["lockeys"]))
         base_list["locdesc"] = query_locdesc
     if blockid != -1:
         config_dict["blockid"] = blockid
