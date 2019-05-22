@@ -30,14 +30,14 @@ CORS(app)
 # Connect to DB and create session with DB
 DB_URI  = config('DB_URI')
 ENGINE  = create_engine(DB_URI)
-
+Session = sessionmaker(bind=ENGINE)
 
 # Query for job
-def get_status(job):
+def get_status(j):
     status = {
-        'id': job.id,
-        'result': job.result,
-        'status': 'failed' if job.is_failed else 'pending' if job.result == None else 'completed'
+        'id': j.id,
+        'result': j.result,
+        'status': 'failed' if j.is_failed else 'pending' if j.result == None else 'completed'
     }
     status.update(job.meta)
     return status
@@ -59,26 +59,25 @@ def get_cities():
     """Get all cities in DB with respective id and user friendly name."""
     cities = []
     Session = sessionmaker(bind=ENGINE)
-    SESSION = Session()
-    for instance in SESSION.query(City).all():
-        if instance.state:
-            cities.append({
-                "id": instance.id,
-                "string": "{}, {}, {}".format(
-                    instance.city,
-                    instance.state,
-                    instance.country
-                ).title()
-            })
-        else:
-            cities.append({
-                "id": instance.id,
-                "string": "{}, {}".format(
-                    instance.city,
-                    instance.country
-                ).title()
-            })
-    SESSION.close()
+    with Session() as SESSION:
+        for instance in SESSION.query(City).all():
+            if instance.state:
+                cities.append({
+                    "id": instance.id,
+                    "string": "{}, {}, {}".format(
+                        instance.city,
+                        instance.state,
+                        instance.country
+                    ).title()
+                })
+            else:
+                cities.append({
+                    "id": instance.id,
+                    "string": "{}, {}".format(
+                        instance.city,
+                        instance.country
+                    ).title()
+                })
     return Response(
         response=json.dumps({"cities": cities, "error": "none"}),
         status=200,
@@ -89,13 +88,11 @@ def get_cities():
 @app.route("/city/<int:cityid>/location", methods=["GET"])
 def get_location_blockid(cityid):
     try:
-        Session = sessionmaker(bind=ENGINE)
-        SESSION = Session()
-        lat = float(request.args.get("lat"))
-        lng = float(request.args.get("lng"))
-        query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) AND cityid = :cityid LIMIT 1;"""
-        blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng, "cityid": cityid}).fetchone()
-        SESSION.close()
+        with Session() as SESSION:
+            lat = float(request.args.get("lat"))
+            lng = float(request.args.get("lng"))
+            query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) AND cityid = :cityid LIMIT 1;"""
+            blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng, "cityid": cityid}).fetchone()
         if blockid:
             blockid = blockid[0]
             return Response(
@@ -128,14 +125,12 @@ def get_city_shapes(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
-                SESSION = Session()
-                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
-                output["id"] = query_id
-                output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
-                SESSION.commit()
-                SESSION.close()
+                with Session() as SESSION:
+                    job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                    output["id"] = query_id
+                    output["result"] = job.result
+                    SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
+                    SESSION.commit()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -174,14 +169,12 @@ def get_predict_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
-                SESSION = Session()
-                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
-                output["id"] = query_id
-                output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
-                SESSION.commit()
-                SESSION.close()
+                with Session() as SESSION:
+                    job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                    output["id"] = query_id
+                    output["result"] = job.result
+                    SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
+                    SESSION.commit()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -220,14 +213,12 @@ def download_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
-                SESSION = Session()
-                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
-                output["id"] = query_id
-                output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
-                SESSION.commit()
-                SESSION.close()
+                with Session() as SESSION:
+                    job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                    output["id"] = query_id
+                    output["result"] = job.result
+                    SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
+                    SESSION.commit()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -278,13 +269,11 @@ def get_city_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
-                SESSION = Session()
-                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
-                output["result"] = job.result
-                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
-                SESSION.commit()
-                SESSION.close()
+                with Session() as SESSION:
+                    job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                    output["result"] = job.result
+                    SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
+                    SESSION.commit()
                 return Response(
                     response=json.dumps(output),
                     status=200,
