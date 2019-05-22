@@ -296,6 +296,8 @@ def get_city_data(cityid):
         config_dict["stime"] = request.args.get("stime","0")
         config_dict["etime"] = request.args.get("etime","23")
         config_dict["loadtype"] = request.args.get("type","")
+        print(config_dict["loadtype"])
+        sys.stdout.flush()
         poss_load = ["map","date","dateall","time","timeall","dow","dowall","crimevioall","crimevioblock","crimeppoall","crimeppoblock","locall","locblock"]
         if config_dict["loadtype"] not in poss_load:
             config_dict["loadtype"] = ""

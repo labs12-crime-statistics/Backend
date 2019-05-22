@@ -407,4 +407,4 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         SESSION.add(job)
         SESSION.commit()
         return job.id
-    return config_dict["loadtype"]
+    return "ERROR"
