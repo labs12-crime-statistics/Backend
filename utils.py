@@ -182,7 +182,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         "dotw": lambda res: dow.append({"severity": 1000.0 * 7 * months_mult * mult_time * float(res['severity']), "dow": int(res['dow'])}),
         "crmvio": lambda res: crimevio.append({"count": res['count'], "violence": res['violence']}),
         "crmppo": lambda res: crimeppo.append({"count": res['count'], "ppo": res['ppo']}),
-        "locdesc": lambda res: locdesc.append({"count": res['count'], "locgroup": res['locgroup']})
+        "locgroup": lambda res: locdesc.append({"count": res['count'], "locgroup": res['locgroup']})
     }
 
     charts = {
