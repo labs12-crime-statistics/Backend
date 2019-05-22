@@ -30,7 +30,7 @@ CORS(app)
 # Connect to DB and create session with DB
 DB_URI  = config('DB_URI')
 ENGINE  = create_engine(DB_URI)
-
+Session = sessionmaker(bind=ENGINE)
 
 # Query for job
 def get_status(job):
@@ -58,7 +58,6 @@ def health_check():
 def get_cities():
     """Get all cities in DB with respective id and user friendly name."""
     cities = []
-    Session = sessionmaker(bind=ENGINE)
     SESSION = Session()
     for instance in SESSION.query(City).all():
         if instance.state:
@@ -89,7 +88,6 @@ def get_cities():
 @app.route("/city/<int:cityid>/location", methods=["GET"])
 def get_location_blockid(cityid):
     try:
-        Session = sessionmaker(bind=ENGINE)
         SESSION = Session()
         lat = float(request.args.get("lat"))
         lng = float(request.args.get("lng"))
@@ -128,7 +126,6 @@ def get_city_shapes(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
                 SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
@@ -174,7 +171,6 @@ def get_predict_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
                 SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
@@ -220,7 +216,6 @@ def download_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
                 SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
@@ -278,7 +273,6 @@ def get_city_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
-                Session = sessionmaker(bind=ENGINE)
                 SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["result"] = job.result
