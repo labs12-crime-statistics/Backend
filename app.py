@@ -30,8 +30,6 @@ CORS(app)
 # Connect to DB and create session with DB
 DB_URI  = config('DB_URI')
 ENGINE  = create_engine(DB_URI)
-Session = sessionmaker(bind=ENGINE)
-SESSION = Session()
 
 
 # Query for job
@@ -60,6 +58,8 @@ def health_check():
 def get_cities():
     """Get all cities in DB with respective id and user friendly name."""
     cities = []
+    Session = sessionmaker(bind=ENGINE)
+    SESSION = Session()
     for instance in SESSION.query(City).all():
         if instance.state:
             cities.append({
@@ -78,6 +78,7 @@ def get_cities():
                     instance.country
                 ).title()
             })
+    SESSION.close()
     return Response(
         response=json.dumps({"cities": cities, "error": "none"}),
         status=200,
@@ -88,10 +89,13 @@ def get_cities():
 @app.route("/city/<int:cityid>/location", methods=["GET"])
 def get_location_blockid(cityid):
     try:
+        Session = sessionmaker(bind=ENGINE)
+        SESSION = Session()
         lat = float(request.args.get("lat"))
         lng = float(request.args.get("lng"))
         query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) AND cityid = :cityid LIMIT 1;"""
         blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng, "cityid": cityid}).fetchone()
+        SESSION.close()
         if blockid:
             blockid = blockid[0]
             return Response(
@@ -124,11 +128,14 @@ def get_city_shapes(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
+                Session = sessionmaker(bind=ENGINE)
+                SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
                 SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
+                SESSION.close()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -167,11 +174,14 @@ def get_predict_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
+                Session = sessionmaker(bind=ENGINE)
+                SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
                 SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
+                SESSION.close()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -210,11 +220,14 @@ def download_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
+                Session = sessionmaker(bind=ENGINE)
+                SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["id"] = query_id
                 output["result"] = job.result
                 SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
+                SESSION.close()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -265,10 +278,13 @@ def get_city_data(cityid):
         if found_job:
             output = get_status(found_job)
             if output["status"] == "completed":
+                Session = sessionmaker(bind=ENGINE)
+                SESSION = Session()
                 job = SESSION.query(Job).filter(Job.id == output["result"]).one()
                 output["result"] = job.result
                 SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
                 SESSION.commit()
+                SESSION.close()
                 return Response(
                     response=json.dumps(output),
                     status=200,
@@ -296,8 +312,6 @@ def get_city_data(cityid):
         config_dict["stime"] = request.args.get("stime","0")
         config_dict["etime"] = request.args.get("etime","23")
         config_dict["loadtype"] = request.args.get("type","")
-        print(config_dict["loadtype"])
-        sys.stdout.flush()
         poss_load = ["map","date","dateall","time","timeall","dow","dowall","crimevioall","crimevioblock","crimeppoall","crimeppoblock","locall","locblock"]
         if config_dict["loadtype"] not in poss_load:
             config_dict["loadtype"] = ""
