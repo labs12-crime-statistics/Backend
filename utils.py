@@ -75,15 +75,16 @@ def get_predictions(cityid):
     return job.id
 
 
-def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
+def get_download(config_dict, dotw, crimeviolence, crimeppos, locgroups):
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
     query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
     query_year    = "incident.year = {cyear}"
     query_time    = "incident.hour >= {stime} AND hour <= {etime}"
     query_dotw    = "incident.dow = ANY({dotw})"
-    query_crmtyp  = "crimetype.category = ANY({crimetypes})"
-    query_locdesc = "(locdesctype.key1, locdesctype.key2, locdesctype.key3) = ANY({lockeys})"
+    query_crmvio  = "crimetype.category = ANY({crimeviolence})"
+    query_crmppo  = "crimetype.category = ANY({crimeppos})"
+    query_locdesc = "locdesctype.locgroup = ANY({locgroups})"
     query_join    = "INNER JOIN crimetype ON incident.crimetypeid = crimetype.id INNER JOIN locdesctype ON incident.locdescid = locdesctype.id INNER JOIN city ON incident.cityid = city.id AND "
 
     base_list = [query_city, query_date, query_year, query_time]
@@ -91,15 +92,14 @@ def get_download(config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3):
     if dotw != "":
         config_dict["dotw"] = dotw.split(",")
         base_list.append(query_dotw)
-    if crimetypes != "":
-        config_dict["crimetypes"] = ["'{}'".format(x) for x in crimetypes.split(",")]
-        config_dict["crimetypes"] = "ARRAY[{}]".format(", ".join(config_dict["crimetypes"]))
-        base_list.append(query_crmtyp)
-    if locdesc1 != [""] and locdesc2 != [""] and locdesc3 != [""] and len(locdesc1) == len(locdesc2) and len(locdesc2) == len(locdesc3):
-        config_dict["lockeys"] = []
-        for i in range(len(locdesc1)):
-            config_dict["lockeys"].append("('{}', '{}', '{}')".format(locdesc1[i], locdesc2[i], locdesc3[i]))
-        config_dict["lockeys"] = "ARRAY[{}]".format(", ".join(config_dict["lockeys"]))
+    if crimeviolence != "":
+        config_dict["crimetypes"] = "ARRAY[{}]".format(crimeviolence)
+        base_list.append(query_crmvio)
+    if crimeppos != "":
+        config_dict["crimeppos"] = "ARRAY[{}]".format(crimeppos)
+        base_list.append(query_crmppo)
+    if locgroups != "":
+        config_dict["locgroups"] = "ARRAY[{}]".format(locgroups)
         base_list.append(query_locdesc)
     query = "COPY (SELECT " + outputs + query_base + query_join + (" AND ".join(base_list)).format(**config_dict) +") TO STDOUT WITH DELIMITER ',' CSV;"
     
