@@ -243,11 +243,10 @@ def download_data(cityid):
         config_dict["stime"] = int(request.args.get("s_t","0"))
         config_dict["etime"] = int(request.args.get("e_t","24"))
         dotw = request.args.get("dotw","")
-        crimetypes = request.args.get("crimetypes","").split(",")
-        locdesc1 = request.args.get("locdesc1","").split(",")
-        locdesc2 = request.args.get("locdesc2","").split(",")
-        locdesc3 = request.args.get("locdesc3","").split(",")    
-        new_job = q.enqueue(get_download, config_dict, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
+        crimevio = request.args.get("crimeviolence","")
+        crimeppo = request.args.get("crimeppos","")
+        locgroups = request.args.get("locgroups","")
+        new_job = q.enqueue(get_download, config_dict, dotw, crimevio, crimeppo, locgroups)
         output = get_status(new_job)
         return Response(
             response=json.dumps(output),
@@ -297,7 +296,7 @@ def get_city_data(cityid):
         config_dict["stime"] = request.args.get("stime","0")
         config_dict["etime"] = request.args.get("etime","23")
         config_dict["loadtype"] = request.args.get("type","")
-        poss_load = ["map","date","dateall","time","timeall","dow","dowall","crimeall","crimeblock","locall","locblock"]
+        poss_load = ["map","date","dateall","time","timeall","dow","dowall","crimevioall","crimevioall","crimeppoall","crimeppoblock","locall","locblock"]
         if config_dict["loadtype"] not in poss_load:
             config_dict["loadtype"] = ""
         if config_dict["sdt"] == "//":
@@ -312,11 +311,10 @@ def get_city_data(cityid):
         config_dict["etime"] = int(config_dict["etime"])
         blockid = int(request.args.get("blockid","-1"))
         dotw = request.args.get("dotw","")
-        crimetypes = request.args.get("crimetypes","")
-        locdesc1 = request.args.get("locdesc1","").split(",")
-        locdesc2 = request.args.get("locdesc2","").split(",")
-        locdesc3 = request.args.get("locdesc3","").split(",")
-        new_job = q.enqueue(get_data, config_dict, blockid, dotw, crimetypes, locdesc1, locdesc2, locdesc3)
+        crimevio = request.args.get("crimeviolence","")
+        crimeppo = request.args.get("crimeppos","")
+        locgroups = request.args.get("locgroups","")
+        new_job = q.enqueue(get_data, config_dict, blockid, dotw, crimevio, crimeppo, locgroups)
         output = get_status(new_job)
         return Response(
             response=json.dumps(output),
