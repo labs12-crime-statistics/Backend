@@ -125,7 +125,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
     ) AS month_count;"""
     months_mult = 1.0 / SESSION.execute(text(query), {"sdt": config_dict["sdt"], "edt": config_dict["edt"]}).fetchone()[0]
 
-    if config_dict["s_time"] > config_dict["e_time"]:
+    if config_dict["stime"] > config_dict["etime"]:
         config_dict["query_time_or"] = "OR"
     else:
         config_dict["query_time_or"] = "AND"
