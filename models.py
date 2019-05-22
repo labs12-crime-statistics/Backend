@@ -73,8 +73,8 @@ class CrimeType(BASE):
         a general description and the numerical severity of the crime."""
     __tablename__ = 'crimetype'
     id            = Column(BigInteger, primary_key=True)
-    category      = Column(String, unique=True, nullable=False)
-    severity      = Column(Integer, nullable=False)
+    ppo           = Column(String, nullable=False)
+    violence      = Column(String, nullable=False)
     incidents     = relationship("Incident", back_populates="crimetype")
 
 
@@ -83,9 +83,7 @@ class LocationDescriptionType(BASE):
         location that the crime took place."""
     __tablename__ = 'locdesctype'
     id            = Column(BigInteger, primary_key=True)
-    key1          = Column(String, nullable=False)
-    key2          = Column(String, nullable=False)
-    key3          = Column(String, nullable=False)
+    locgroup      = Column(String, nullable=False)
     incidents     = relationship("Incident", back_populates="locationdesc")
 
 
