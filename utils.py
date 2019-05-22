@@ -16,11 +16,11 @@ from models import *
 
 DB_URI  = config('DB_URI')
 ENGINE  = create_engine(DB_URI)
-Session = sessionmaker(bind=ENGINE)
-SESSION = Session()
 
 
 def get_shapes(cityid):
+    Session = sessionmaker(bind=ENGINE)
+    SESSION = Session()
     citycoords_req = SESSION.query(City.location).filter(City.id == cityid)
     citycoords_bytes = citycoords_req.one()[0].data.tobytes()
     citycoords = wkb.loads(citycoords_bytes)["coordinates"]
@@ -42,10 +42,13 @@ def get_shapes(cityid):
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
+    SESSION.close()
     return job.id
 
 
 def get_predictions(cityid):
+    Session = sessionmaker(bind=ENGINE)
+    SESSION = Session()
     query = "SELECT * FROM max_count;"
     max_risk = float(SESSION.execute(text(query)).fetchone()[0])
     query = f"""SELECT id, ENCODE(prediction::BYTEA, 'hex') AS predict, month, year, population FROM block WHERE cityid = {cityid} AND prediction IS NOT NULL;"""
@@ -56,13 +59,13 @@ def get_predictions(cityid):
     with ENGINE.connect() as CONN:
         df = pd.read_sql_query(query, CONN)
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
-    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24,3,2)))
+    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
     all_dates = list(range(df["start"].min(), df["start"].min()+12))
     predictions_n = {}
-    predictionall = np.zeros((len(all_dates),7,24,3,2))
+    predictionall = np.zeros((len(all_dates),7,24))
     for k in df.index:
         dift = df.loc[k,"start"]-all_dates[0]
-        predictions_n[str(df.loc[k,"id"])] = np.zeros((len(all_dates),7,24,3,2))
+        predictions_n[str(df.loc[k,"id"])] = np.zeros((len(all_dates),7,24))
         predictions_n[str(df.loc[k,"id"])][dift:12-dift,:,:] = df.loc[k,"predict"]
         predictionall += predictions_n[str(df.loc[k,"id"])] * df.loc[k,"population"]
         predictions_n[str(df.loc[k,"id"])] = predictions_n[str(df.loc[k,"id"])].tolist()
@@ -72,10 +75,13 @@ def get_predictions(cityid):
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
+    SESSION.close()
     return job.id
 
 
 def get_download(config_dict, dotw, crimeviolence, crimeppos, locgroups):
+    Session = sessionmaker(bind=ENGINE)
+    SESSION = Session()
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
     query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
@@ -113,10 +119,13 @@ def get_download(config_dict, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=f.getvalue(), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
 
 
 def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
+    Session = sessionmaker(bind=ENGINE)
+    SESSION = Session()
     query = """SELECT COUNT(*) FROM (
         SELECT COUNT(*)
         FROM incident
@@ -220,6 +229,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "dowblock" and blockid != "":
         result = {
@@ -236,6 +246,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "timeall":
         result = {
@@ -255,6 +266,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "timeblock" and blockid != "":
         result = {
@@ -271,6 +283,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "crimeppoall":
         result = {
@@ -285,6 +298,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "crimeppoblock" and config_dict["blockid"] != "":
         result = {
@@ -299,6 +313,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "crimevioall":
         result = {
@@ -313,6 +328,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "crimevioblock" and config_dict["blockid"] != "":
         result = {
@@ -327,6 +343,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "locall":
         result = {
@@ -343,6 +360,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "locblock" and config_dict["blockid"] != -1:
         result = {
@@ -357,6 +375,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "map":
         result = {
@@ -379,6 +398,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "dateall":
         result = {
@@ -393,6 +413,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     elif config_dict["loadtype"] == "date" and blockid != -1:
         result = {
@@ -406,5 +427,6 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
+        SESSION.close()
         return job.id
     return "ERROR"
