@@ -189,9 +189,9 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         "date": lambda res: date.append({"severity": 1000.0 * mult_dow * mult_time * float(res['severity']), "month": int(res['month']), "year": int(res['year']), "date": datetime.datetime.strptime("{:02d}/{}".format(int(res['month']),int(res['year'])), '%m/%Y')}),
         "time": lambda res: time.append({"severity": 1000.0 * 24 * mult_dow * months_mult * float(res['severity']), "hour": int(res['hour'])}),
         "dotw": lambda res: dow.append({"severity": 1000.0 * 7 * months_mult * mult_time * float(res['severity']), "dow": int(res['dow'])}),
-        "crmvio": lambda res: crimevio.append({"value": res['count'], "id": res['violence']}),
-        "crmppo": lambda res: crimeppo.append({"value": res['count'], "id": res['ppo']}),
-        "locgroup": lambda res: locdesc.append({"value": res['count'], "id": res['locgroup']})
+        "crmvio": lambda res: crimevio.append({"value": res['count'], "id": res['violence'], "label": (" ".join(res["violence"].split("_"))).Title()}),
+        "crmppo": lambda res: crimeppo.append({"value": res['count'], "id": res['ppo'], "label": (" ".join(res["ppo"].split("_"))).Title()}),
+        "locgroup": lambda res: locdesc.append({"value": res['count'], "id": res['locgroup'], "label": (" ".join(res["locgroup"].split("_"))).Title()})
     }
 
     charts = {
