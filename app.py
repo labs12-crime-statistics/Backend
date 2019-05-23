@@ -18,7 +18,7 @@ import io
 import sys
 
 from models import *
-from utils import get_data, get_download, get_shapes, get_predictions
+from utils import get_data, get_download, get_shapes, get_predictions, get_tips
 
 
 # Create Flask app and allow for CORS
@@ -92,7 +92,7 @@ def get_tips():
         config_dict = {}
         config_dict["cityid"] = int(request.args.get('cityid'))
         config_dict["blockid"] = int(request.args.get('blockid'))
-        new_job = q.enqueue(get_shapes, config_dict)
+        new_job = q.enqueue(get_tips, config_dict)
         output = get_status(new_job)
         return Response(
             response=json.dumps(output),
