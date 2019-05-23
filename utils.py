@@ -49,7 +49,7 @@ def get_shapes(cityid):
 
 def get_predictions(cityid):
     def set_space(x):
-        pred_space[id_dict[x['id']],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).reshape((12,7,24,3,2))
+        pred_space[id_dict[x['id']],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).astype(float).reshape((12,7,24,3,2))
     
     SESSION = Session()
     query = "SELECT * FROM max_count;"
@@ -75,10 +75,12 @@ def get_predictions(cityid):
     sys.stdout.flush()
     predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    predictionall = (predictionall / float(df["population"].sum())).tolist()
+    predictionall = json.dumps((predictionall / float(df["population"].sum())).tolist())
     print("COMPLETED ALL PRED_SPACE")
     sys.stdout.flush()
-    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": pred_space.tolist(), "maxRisk": max_risk})
+    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": json.dumps(pred_space.tolist()), "maxRisk": max_risk})
+    print("COMPLETED RESULT")
+    sys.stdout.flush()
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
