@@ -100,7 +100,8 @@ def get_tips(config_dict):
     crime_all_curr = SESSION.execute(text(query)).fetchone()[0]
 
     query = """
-        SELECT STDDEV(
+        SELECT STDDEV(count_block)
+        FROM (
             SELECT
                 COUNT(*)/block.population AS count_block
             FROM incident
@@ -111,7 +112,7 @@ def get_tips(config_dict):
                 AND incident.year = 2018
             GROUP BY
                 incident.blockid
-        ) AS stddev_count;
+        ) AS count_all;
     """
     crime_all_std = SESSION.execute(text(query)).fetchone()[0]
 
