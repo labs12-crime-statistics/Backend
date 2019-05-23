@@ -299,10 +299,10 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
 
         pd.read_sql_query(charts["crmppo_all"], CONN).apply(funcs["crmppo"], axis=1)
         t = 0.0
-        for c in range(len(locdesc)):
-            t += locdesc[c]["value"]
-        for c in range(len(locdesc)):
-            locdesc[c]["value"] /= t / 100.0
+        for c in range(len(crimeppo)):
+            t += crimeppo[c]["value"]
+        for c in range(len(crimeppo)):
+            crimeppo[c]["value"] /= t / 100.0
         result["main"]["all"]["values_type"] = crimeppo
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
@@ -320,10 +320,10 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         
         pd.read_sql_query(charts["crmppo"], CONN).apply(funcs["crmppo"], axis=1)
         t = 0.0
-        for c in range(len(locdesc)):
-            t += locdesc[c]["value"]
-        for c in range(len(locdesc)):
-            locdesc[c]["value"] /= t / 100.0
+        for c in range(len(crimeppo)):
+            t += crimeppo[c]["value"]
+        for c in range(len(crimeppo)):
+            crimeppo[c]["value"] /= t / 100.0
         result["main"]["Block "+str(blockid)]["values_type"] = crimeppo
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
@@ -341,10 +341,10 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
 
         pd.read_sql_query(charts["crmvio_all"], CONN).apply(funcs["crmvio"], axis=1)
         t = 0.0
-        for c in range(len(locdesc)):
-            t += locdesc[c]["value"]
-        for c in range(len(locdesc)):
-            locdesc[c]["value"] /= t / 100.0
+        for c in range(len(crimevio)):
+            t += crimevio[c]["value"]
+        for c in range(len(crimevio)):
+            crimevio[c]["value"] /= t / 100.0
         result["main"]["all"]["values_type"] = crimevio
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
@@ -362,10 +362,10 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         
         pd.read_sql_query(charts["crmvio"], CONN).apply(funcs["crmvio"], axis=1)
         t = 0.0
-        for c in range(len(locdesc)):
-            t += locdesc[c]["value"]
-        for c in range(len(locdesc)):
-            locdesc[c]["value"] /= t / 100.0
+        for c in range(len(crimevio)):
+            t += crimevio[c]["value"]
+        for c in range(len(crimevio)):
+            crimevio[c]["value"] /= t / 100.0
         result["main"]["Block "+str(blockid)]["values_type"] = crimevio
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
