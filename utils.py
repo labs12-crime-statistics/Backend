@@ -65,13 +65,19 @@ def get_predictions(cityid):
     df.loc[:,'id'] = df['id'].astype(int)
     all_dates = list(range(df["start"].min(), df["start"].min()+12))
     pred_space = np.zeros((df.shape[0],12,7,24,3,2))
+    print("COMPLETED PRED_SPACE")
+    sys.stdout.flush()
     id_dict = {}
     for ind, val in enumerate(df["id"]):
         id_dict[val] = ind
     df.loc[:,"predict"] = df.apply(set_space, axis=1)
+    print("COMPLETED APPLY PRED_SPACE")
+    sys.stdout.flush()
     predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = (predictionall / float(df["population"].sum())).tolist()
+    print("COMPLETED ALL PRED_SPACE")
+    sys.stdout.flush()
     result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": pred_space.tolist(), "maxRisk": max_risk})
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
