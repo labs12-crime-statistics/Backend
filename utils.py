@@ -68,6 +68,7 @@ def get_predictions(cityid):
     print("COMPLETED PRED_SPACE")
     sys.stdout.flush()
     id_dict = {}
+    rev_id_dict = {}
     for ind, val in enumerate(df["id"]):
         rev_id_dict[ind] = val
         id_dict[val] = ind
