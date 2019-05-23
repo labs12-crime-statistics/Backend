@@ -75,8 +75,10 @@ def get_predictions(cityid):
     sys.stdout.flush()
     predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    predictionall = json.dumps((predictionall / float(df["population"].sum())).astype('|S5').tolist()).replace("'", "")
-    pred_space = json.dumps(pred_space.astype('|S5').tolist()).replace("'", "")
+    predictionall = json.dumps((predictionall / float(df["population"].sum())).astype('|S5').tolist())
+    predictionall.replace("'", "")
+    pred_space = json.dumps(pred_space.astype('|S5').tolist())
+    pred_space.replace("'", "")
     print("COMPLETED ALL PRED_SPACE")
     sys.stdout.flush()
     result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": pred_space, "maxRisk": max_risk})
