@@ -65,7 +65,7 @@ def get_predictions(cityid):
     df.loc[:,'id'] = df['id'].astype(int)
     all_dates = list(range(df["start"].min(), df["start"].min()+12))
     pred_space = np.zeros((df.shape[0],12,7,24,3,2))
-    df.loc[:,"predict"] = df.apply(set_space)
+    df.loc[:,"predict"] = df.apply(set_space, axis=1)
     predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = (predictionall / float(df["population"].sum())).tolist()
