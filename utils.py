@@ -69,6 +69,7 @@ def get_predictions(cityid):
     sys.stdout.flush()
     id_dict = {}
     for ind, val in enumerate(df["id"]):
+        rev_id_dict[ind] = val
         id_dict[val] = ind
     df.loc[:,"predict"] = df.apply(set_space, axis=1)
     print("COMPLETED APPLY PRED_SPACE")
@@ -76,10 +77,12 @@ def get_predictions(cityid):
     predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = np.array2string(predictionall / float(df["population"].sum()), precision=2)
-    pred_space = np.array2string(pred_space, precision=2)
+    predictions_n = {}
+    for i in range(pred_space.shape[0]):
+        predictions_n[rev_id_dict[i]] = np.array2string(pred_space[i], precision=2)
     print("COMPLETED ALL PRED_SPACE")
     sys.stdout.flush()
-    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": pred_space, "maxRisk": max_risk})
+    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n, "maxRisk": max_risk})
     print("COMPLETED RESULT")
     sys.stdout.flush()
     job = Job(result=result, datetime=datetime.datetime.utcnow())
