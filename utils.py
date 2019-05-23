@@ -49,7 +49,7 @@ def get_shapes(cityid):
 
 def get_predictions(cityid):
     def set_space(x):
-        pred_space[x['id'],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['prediction']), dtype=np.float64).reshape((12,7,24,3,2))
+        pred_space[x['id'],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).reshape((12,7,24,3,2))
     
     SESSION = Session()
     query = "SELECT * FROM max_count;"
