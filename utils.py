@@ -51,6 +51,7 @@ def get_predictions(cityid):
     def set_space(x):
         pred_space[id_dict[x['id']],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).astype(float).reshape((12,7,24,3,2))
     
+    np.set_printoptions(threshold=np.inf)
     SESSION = Session()
     query = "SELECT * FROM max_count;"
     max_risk = float(SESSION.execute(text(query)).fetchone()[0])
