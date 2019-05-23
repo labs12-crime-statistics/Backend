@@ -103,7 +103,7 @@ def get_tips(config_dict):
         SELECT STDDEV(count_block)
         FROM (
             SELECT
-                COUNT(*)/block.population AS count_block
+                COUNT(*)/AVG(block.population) AS count_block
             FROM incident
             INNER JOIN block ON incident.blockid = block.id
             INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
