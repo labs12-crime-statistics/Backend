@@ -55,7 +55,7 @@ def health_check():
 
 
 @app.route("/tips", methods=["GET"])
-def get_tips():
+def get_tips_route():
     query_id = request.args.get('job')
     if query_id:
         found_job = q.fetch_job(query_id)
