@@ -49,7 +49,7 @@ def get_shapes(cityid):
 
 def get_predictions(cityid):
     def set_space(x):
-        pred_space[x['id'],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).reshape((12,7,24,3,2))
+        pred_space[id_dict[x['id']],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).reshape((12,7,24,3,2))
     
     SESSION = Session()
     query = "SELECT * FROM max_count;"
@@ -65,6 +65,9 @@ def get_predictions(cityid):
     df.loc[:,'id'] = df['id'].astype(int)
     all_dates = list(range(df["start"].min(), df["start"].min()+12))
     pred_space = np.zeros((df.shape[0],12,7,24,3,2))
+    id_dict = {}
+    for ind, val in enumerate(df["id"]):
+        id_dict[val] = ind
     df.loc[:,"predict"] = df.apply(set_space, axis=1)
     predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
