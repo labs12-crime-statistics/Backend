@@ -90,8 +90,8 @@ def get_tips():
             )
     else:
         config_dict = {}
-        config_dict["cityid"] = request.args.get('cityid')
-        config_dict["blockid"] = request.args.get('blockid')
+        config_dict["cityid"] = int(request.args.get('cityid'))
+        config_dict["blockid"] = int(request.args.get('blockid'))
         new_job = q.enqueue(get_shapes, config_dict)
         output = get_status(new_job)
         return Response(
