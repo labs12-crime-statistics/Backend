@@ -52,48 +52,48 @@ def get_tips(config_dict):
     
     query = f"""
         SELECT
-            ENCODE(blocks.prediction::BYTEA, 'hex') AS predictions
-        FROM blocks
-        WHERE blocks.cityid = 1
-            AND blocks.id = {config_dict['blockid']};
+            ENCODE(block.prediction::BYTEA, 'hex') AS predictions
+        FROM block
+        WHERE block.cityid = 1
+            AND block.id = {config_dict['blockid']};
     """
     crime_future = SESSION.execute(text(query)).fetchone()[0]
     
     query = f"""
         SELECT
-            COUNT(*)/AVG(blocks.population) AS crime_rate
+            COUNT(*)/AVG(block.population) AS crime_rate
         FROM incident
-        INNER JOIN blocks ON incident.blockid = blocks.id
+        INNER JOIN block ON incident.blockid = block.id
         INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
-            AND blocks.population > 0
+            AND block.population > 0
             AND incident.cityid = 1
             AND incident.year = 2014
-            AND blocks.id = {config_dict['blockid']};
+            AND block.id = {config_dict['blockid']};
     """
     crime_block_past = SESSION.execute(text(query)).fetchone()[0]
 
     query = f"""
         SELECT
-            COUNT(*)/AVG(blocks.population) AS crime_rate
+            COUNT(*)/AVG(block.population) AS crime_rate
         FROM incident
-        INNER JOIN blocks ON incident.blockid = blocks.id
+        INNER JOIN block ON incident.blockid = block.id
         INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
-            AND blocks.population > 0
+            AND block.population > 0
             AND incident.cityid = 1
             AND incident.year = 2018
-            AND blocks.id = {config_dict['blockid']};
+            AND block.id = {config_dict['blockid']};
     """
     crime_block_curr = SESSION.execute(text(query)).fetchone()[0]
     
     query = """
         SELECT
             COUNT(*)/(
-                SELECT SUM(blocks.population) AS city_population
-                FROM blocks) AS crime_rate
+                SELECT SUM(block.population) AS city_population
+                FROM block) AS crime_rate
         FROM incident
-        INNER JOIN block ON incident.blockid = blocks.id
+        INNER JOIN block ON incident.blockid = block.id
         INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
-            AND blocks.population > 0
+            AND block.population > 0
             AND incident.cityid = 1
             AND incident.year = 2018;
     """
@@ -104,9 +104,9 @@ def get_tips(config_dict):
             SELECT
                 COUNT(*)/block.population AS count_block
             FROM incident
-            INNER JOIN block ON incident.blockid = blocks.id
+            INNER JOIN block ON incident.blockid = block.id
             INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
-                AND blocks.population > 0
+                AND block.population > 0
                 AND incident.cityid = 1
                 AND incident.year = 2018
             GROUP BY
