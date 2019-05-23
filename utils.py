@@ -48,10 +48,6 @@ def get_shapes(cityid):
 
 
 def get_predictions(cityid):
-    def set_space(x):
-        pred_space[id_dict[x['id']],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['predict']), dtype=np.float64).astype(float).reshape((12,7,24,3,2))
-    
-    np.set_printoptions(threshold=np.inf)
     SESSION = Session()
     query = "SELECT * FROM max_count;"
     max_risk = float(SESSION.execute(text(query)).fetchone()[0])
@@ -63,30 +59,19 @@ def get_predictions(cityid):
     with ENGINE.connect() as CONN:
         df = pd.read_sql_query(query, CONN)
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
-    df.loc[:,'id'] = df['id'].astype(int)
+    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24)))
     all_dates = list(range(df["start"].min(), df["start"].min()+12))
-    pred_space = np.zeros((df.shape[0],12,7,24,3,2))
-    print("COMPLETED PRED_SPACE")
-    sys.stdout.flush()
-    id_dict = {}
-    rev_id_dict = {}
-    for ind, val in enumerate(df["id"]):
-        rev_id_dict[ind] = val
-        id_dict[val] = ind
-    df.loc[:,"predict"] = df.apply(set_space, axis=1)
-    print("COMPLETED APPLY PRED_SPACE")
-    sys.stdout.flush()
-    predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
+    predictions_n = {}
+    predictionall = np.zeros((len(all_dates),7,24))
+    for k in df.index:
+        dift = df.loc[k,"start"]-all_dates[0]
+        predictions_n[str(df.loc[k,"id"])] = np.zeros((len(all_dates),7,24))
+        predictions_n[str(df.loc[k,"id"])][dift:12-dift,:,:] = df.loc[k,"predict"]
+        predictionall += predictions_n[str(df.loc[k,"id"])] * df.loc[k,"population"]
+        predictions_n[str(df.loc[k,"id"])] = predictions_n[str(df.loc[k,"id"])].tolist()
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
-    predictionall = np.array2string(predictionall / float(df["population"].sum()), precision=2, separator=",")
-    # predictions_n = {}
-    # for i in range(pred_space.shape[0]):
-    #     predictions_n[rev_id_dict[i]] = np.array2string(pred_space, precision=2, separator=",")
-    print("COMPLETED ALL PRED_SPACE")
-    sys.stdout.flush()
-    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": np.array2string(pred_space, precision=2, separator=","), "maxRisk": max_risk})
-    print("COMPLETED RESULT")
-    sys.stdout.flush()
+    predictionall = (predictionall / float(df["population"].sum())).tolist()
+    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n, "maxRisk": max_risk})
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
