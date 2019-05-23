@@ -79,6 +79,8 @@ def get_predictions(cityid):
     print("COMPLETED ALL PRED_SPACE")
     sys.stdout.flush()
     result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": json.dumps(pred_space.tolist()), "maxRisk": max_risk})
+    print("COMPLETED RESULT")
+    sys.stdout.flush()
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
