@@ -54,6 +54,53 @@ def health_check():
     )
 
 
+@app.route("/tips", methods=["GET"])
+def get_tips():
+    query_id = request.args.get('job')
+    if query_id:
+        found_job = q.fetch_job(query_id)
+        if found_job:
+            output = get_status(found_job)
+            if output["status"] == "completed":
+                SESSION = Session()
+                job = SESSION.query(Job).filter(Job.id == output["result"]).one()
+                output["id"] = query_id
+                output["result"] = job.result
+                SESSION.query(Job).filter(Job.datetime < datetime.datetime.utcnow() + datetime.timedelta(hours=-2)).delete()
+                SESSION.commit()
+                SESSION.close()
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                output["id"] = query_id
+                return Response(
+                    response=json.dumps(output),
+                    status=200,
+                    mimetype='application/json'
+                )
+        else:
+            output = { 'id': None, 'error_message': 'No job exists with the id number ' + query_id }
+            return Response(
+                response=json.dumps(output),
+                status=403,
+                mimetype='application/json'
+            )
+    else:
+        config_dict = {}
+        config_dict["cityid"] = request.args.get('cityid')
+        config_dict["blockid"] = request.args.get('blockid')
+        new_job = q.enqueue(get_shapes, config_dict)
+        output = get_status(new_job)
+        return Response(
+            response=json.dumps(output),
+            status=200,
+            mimetype='application/json'
+        )
+
+
 # Get list of cities in json format
 @app.route("/cities", methods=["GET"])
 def get_cities():
