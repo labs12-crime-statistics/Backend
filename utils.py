@@ -55,7 +55,7 @@ def get_tips(config_dict):
             ENCODE(blocks.prediction::BYTEA, 'hex') AS predictions
         FROM blocks
         WHERE blocks.cityid = 1
-            AND blocks.id = {config_dict[blockid]};
+            AND blocks.id = {config_dict['blockid']};
     """
     crime_future = SESSION.execute(text(query)).fetchone()[0]
     
@@ -68,7 +68,7 @@ def get_tips(config_dict):
             AND blocks.population > 0
             AND incident.cityid = 1
             AND incident.year = 2014
-            AND blocks.id = {config_dict[blockid]};
+            AND blocks.id = {config_dict['blockid']};
     """
     crime_block_past = SESSION.execute(text(query)).fetchone()[0]
 
@@ -81,7 +81,7 @@ def get_tips(config_dict):
             AND blocks.population > 0
             AND incident.cityid = 1
             AND incident.year = 2018
-            AND blocks.id = {config_dict[blockid]};
+            AND blocks.id = {config_dict['blockid']};
     """
     crime_block_curr = SESSION.execute(text(query)).fetchone()[0]
     
