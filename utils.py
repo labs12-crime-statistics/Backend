@@ -99,13 +99,13 @@ def get_download(config_dict, dotw, crimeviolence, crimeppos, locgroups):
         config_dict["dotw"] = dotw.split(",")
         base_list.append(query_dotw)
     if crimeviolence != "":
-        config_dict["crimetypes"] = "ARRAY[{}]".format(crimeviolence)
+        config_dict["crimetypes"] = "ARRAY[{}]".format(",".join(["'{}'".format(x) for x in crimeviolence.split(',')]))
         base_list.append(query_crmvio)
     if crimeppos != "":
-        config_dict["crimeppos"] = "ARRAY[{}]".format(crimeppos)
+        config_dict["crimeppos"] = "ARRAY[{}]".format(",".join(["'{}'".format(x) for x in crimeppos.split(',')]))
         base_list.append(query_crmppo)
     if locgroups != "":
-        config_dict["locgroups"] = "ARRAY[{}]".format(locgroups)
+        config_dict["locgroups"] = "ARRAY[{}]".format(",".join(["'{}'".format(x) for x in locgroups.split(',')]))
         base_list.append(query_locdesc)
     query = "COPY (SELECT " + outputs + query_base + query_join + (" AND ".join(base_list)).format(**config_dict) +") TO STDOUT WITH DELIMITER ',' CSV;"
     
@@ -166,13 +166,13 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         config_dict["dotw"] = "ARRAY[{}]".format(dotw)
         base_list["dow"] = query_dotw
     if crimeviolence != "":
-        config_dict["crimeviolence"] = "ARRAY[{}]".format(crimeviolence)
+        config_dict["crimetypes"] = "ARRAY[{}]".format(",".join(["'{}'".format(x) for x in crimeviolence.split(',')]))
         base_list["crimevio"] = query_crmvio
     if crimeppos != "":
-        config_dict["crimeppos"] = "ARRAY[{}]".format(crimeppos)
+        config_dict["crimeppos"] = "ARRAY[{}]".format(",".join(["'{}'".format(x) for x in crimeppos.split(',')]))
         base_list["crimeppo"] = query_crmppo
     if locgroups != "":
-        config_dict["locgroups"] = "ARRAY[{}]".format(locgroups)
+        config_dict["locgroups"] = "ARRAY[{}]".format(",".join(["'{}'".format(x) for x in locgroups.split(',')]))
         base_list["locdesc"] = query_locdesc
     if blockid != -1:
         config_dict["blockid"] = blockid
