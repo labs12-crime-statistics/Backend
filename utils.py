@@ -48,6 +48,9 @@ def get_shapes(cityid):
 
 
 def get_predictions(cityid):
+    def set_space(x):
+        pred_space[x['id'],:,:,:,:,:] = np.frombuffer(bytes.fromhex(x['prediction']), dtype=np.float64).reshape((12,7,24,3,2))
+    
     SESSION = Session()
     query = "SELECT * FROM max_count;"
     max_risk = float(SESSION.execute(text(query)).fetchone()[0])
@@ -59,19 +62,14 @@ def get_predictions(cityid):
     with ENGINE.connect() as CONN:
         df = pd.read_sql_query(query, CONN)
     df.loc[:,"start"] = df.apply(lambda x: x["month"]+12*x["year"], axis=1)
-    df.loc[:,"predict"] = df["predict"].apply(lambda x: np.frombuffer(bytes.fromhex(x), dtype=np.float64).reshape((12,7,24,3,2)))
+    df.loc[:,'id'] = df['id'].astype(int)
     all_dates = list(range(df["start"].min(), df["start"].min()+12))
-    predictions_n = {}
-    predictionall = np.zeros((len(all_dates),7,24,3,2))
-    for k in df.index:
-        dift = df.loc[k,"start"]-all_dates[0]
-        predictions_n[str(df.loc[k,"id"])] = np.zeros((len(all_dates),7,24,3,2))
-        predictions_n[str(df.loc[k,"id"])][dift:12-dift,:,:] = df.loc[k,"predict"]
-        predictionall += predictions_n[str(df.loc[k,"id"])] * df.loc[k,"population"]
-        predictions_n[str(df.loc[k,"id"])] = predictions_n[str(df.loc[k,"id"])].tolist()
+    pred_space = np.zeros((df.shape[0],12,7,24,3,2))
+    df.loc[:,"predict"] = df.apply(set_space)
+    predictionall = np.sum(pred_space * df["population"].values.reshape((-1,1,1,1,1,1)), 0)
     all_dates_format = ["{}/{}".format(x%12+1,x//12) for x in all_dates]
     predictionall = (predictionall / float(df["population"].sum())).tolist()
-    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": predictions_n, "maxRisk": max_risk})
+    result = json.dumps({"error": "none", "predictionAll": predictionall, "allDatesFormatted": all_dates_format, "allDatesInt": all_dates, "prediction": pred_space.tolist(), "maxRisk": max_risk})
     job = Job(result=result, datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
