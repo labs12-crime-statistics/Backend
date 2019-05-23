@@ -47,6 +47,104 @@ def get_shapes(cityid):
     return JOB_ID
 
 
+def get_tips(config_dict):
+    SESSION = Session()
+    
+    query = f"""
+        SELECT
+            ENCODE(blocks.prediction::BYTEA, 'hex') AS predictions
+        FROM blocks
+        WHERE blocks.cityid = 1
+            AND blocks.id = {config_dict[blockid]};
+    """
+    crime_future = SESSION.execute(text(query)).fetchone()[0]
+    
+    query = f"""
+        SELECT
+            COUNT(*)/AVG(blocks.population) AS crime_rate
+        FROM incident
+        INNER JOIN blocks ON incident.blockid = blocks.id
+        INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
+            AND blocks.population > 0
+            AND incident.cityid = 1
+            AND incident.year = 2014
+            AND blocks.id = {config_dict[blockid]};
+    """
+    crime_block_past = SESSION.execute(text(query)).fetchone()[0]
+
+    query = f"""
+        SELECT
+            COUNT(*)/AVG(blocks.population) AS crime_rate
+        FROM incident
+        INNER JOIN blocks ON incident.blockid = blocks.id
+        INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
+            AND blocks.population > 0
+            AND incident.cityid = 1
+            AND incident.year = 2018
+            AND blocks.id = {config_dict[blockid]};
+    """
+    crime_block_curr = SESSION.execute(text(query)).fetchone()[0]
+    
+    query = """
+        SELECT
+            COUNT(*)/(
+                SELECT SUM(blocks.population) AS city_population
+                FROM blocks) AS crime_rate
+        FROM incident
+        INNER JOIN block ON incident.blockid = blocks.id
+        INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
+            AND blocks.population > 0
+            AND incident.cityid = 1
+            AND incident.year = 2018;
+    """
+    crime_all_curr = SESSION.execute(text(query)).fetchone()[0]
+
+    query = """
+        SELECT STDDEV(
+            SELECT
+                COUNT(*)/block.population AS count_block
+            FROM incident
+            INNER JOIN block ON incident.blockid = blocks.id
+            INNER JOIN crimetype ON incident.crimetypeid = crimetype.id
+                AND blocks.population > 0
+                AND incident.cityid = 1
+                AND incident.year = 2018
+            GROUP BY
+                incident.blockid
+        ) AS stddev_count;
+    """
+    crime_all_std = SESSION.execute(text(query)).fetchone()[0]
+
+    crime_future = np.frombuffer(bytes.fromhex(crime_future), dtype=np.float64).reshape((12,7,24))
+    future_m = crime_future.sum((1,2))
+    future_d = crime_future.sum((0,2))
+    future_h = crime_future.sum((0,1))
+
+    future_m = future_m - future_m.mean()
+    future_d = future_d - future_d.mean()
+    future_h = future_h - future_h.mean()
+
+    crime_change_past = 0.2 * (crime_block_curr - crime_block_past) / crime_block_past
+    crime_change_pred = (crime_block_future.sum() - crime_block_curr) / crime_block_curr
+    std_val = (crime_block_curr - crime_all_curr) / crime_all_std
+
+    result = {
+        "changePast": crime_change_past,
+        "changeFuture": crime_change_pred,
+        "cityComp": std_val,
+        "diffMonth": future_m.tolist(),
+        "diffDow": future_d.tolist(),
+        "diffHour": future_h.tolist()
+    }
+    
+    job = Job(result=JSON.dumps(result), datetime=datetime.datetime.utcnow())
+    SESSION.add(job)
+    SESSION.commit()
+    JOB_ID = job.id
+    SESSION.close()
+    return JOB_ID
+
+
 def get_predictions(cityid):
     SESSION = Session()
     query = "SELECT * FROM max_count;"
