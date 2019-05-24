@@ -549,7 +549,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         }
 
         pd.read_sql_query(charts["date_all"], CONN).apply(funcs["date"], axis=1)
-        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"], "style": {"strokeDasharray": "12, 6", "strokeWidth": 2}} for c in sorted(date, key=lambda k: k['date'])]
+        result["main"]["all"]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
@@ -564,7 +564,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
 
         result["main"]["Block "+str(blockid)] = {}
         pd.read_sql_query(charts["date"], CONN).apply(funcs["date"], axis=1)
-        result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"], "style": {"strokeDasharray": "12, 6", "strokeWidth": 2}} for c in sorted(date, key=lambda k: k['date'])]
+        result["main"]["Block "+str(blockid)]["values_date"] = [{"x": "{}/{}".format(c["month"], c["year"]), "y": c["severity"]} for c in sorted(date, key=lambda k: k['date'])]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
         SESSION.add(job)
         SESSION.commit()
