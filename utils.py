@@ -241,7 +241,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
     query_base    = " FROM incident "
     query_city    = "incident.cityid = {cityid}"
     query_date    = "incident.datetime >= TO_DATE('{sdt}', 'MM/DD/YYYY') AND incident.datetime <= TO_DATE('{edt}', 'MM/DD/YYYY')"
-    query_time    = "incident.hour >= {stime} {query_time_or} incident.hour <= {etime}"
+    query_time    = "(incident.hour >= {stime} {query_time_or} incident.hour <= {etime})"
     query_block   = "incident.blockid = {blockid}"
     query_dotw    = "incident.dow = ANY({dotw})"
     query_crmvio  = "crimetype.violence = ANY({crimeviolence})"
