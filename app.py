@@ -139,7 +139,7 @@ def get_location_blockid(cityid):
         SESSION = Session()
         lat = float(request.args.get("lat"))
         lng = float(request.args.get("lng"))
-        query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lat :lng)')) AND cityid = :cityid LIMIT 1;"""
+        query = """SELECT id FROM block WHERE ST_CONTAINS(shape, ST_GEOMFROMTEXT('POINT(:lng :lat)')) AND cityid = :cityid LIMIT 1;"""
         blockid = SESSION.execute(text(query), {"lat": lat, "lng": lng, "cityid": cityid}).fetchone()
         SESSION.close()
         if blockid:
