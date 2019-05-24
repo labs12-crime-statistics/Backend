@@ -276,6 +276,9 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
     if blockid != -1:
         config_dict["blockid"] = blockid
 
+    print(config_dict)
+    sys.stdout.flush()
+
     maps = []
     date = []
     time = []
@@ -331,7 +334,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         JOB_ID = job.id
         SESSION.close()
         return JOB_ID
-    elif config_dict["loadtype"] == "dowblock" and blockid != "":
+    elif config_dict["loadtype"] == "dow" and blockid != "":
         result = {
             "error": "none",
             "main": {}
@@ -370,7 +373,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         JOB_ID = job.id
         SESSION.close()
         return JOB_ID
-    elif config_dict["loadtype"] == "timeblock" and blockid != "":
+    elif config_dict["loadtype"] == "time" and blockid != "":
         result = {
             "error": "none",
             "main": {}
