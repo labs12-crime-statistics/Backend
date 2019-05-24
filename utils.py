@@ -138,7 +138,7 @@ def get_tips(config_dict):
         "diffHour": future_h.tolist()
     }
     
-    job = Job(result=JSON.dumps(result), datetime=datetime.datetime.utcnow())
+    job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
     SESSION.add(job)
     SESSION.commit()
     JOB_ID = job.id
