@@ -125,7 +125,7 @@ def get_cities():
                     instance.country
                 ).title()
             })
-    cities = [x for x in cities if x.id == 1]
+    cities = [x for x in cities if x["id"] == 1]
     SESSION.close()
     return Response(
         response=json.dumps({"cities": cities, "error": "none"}),
