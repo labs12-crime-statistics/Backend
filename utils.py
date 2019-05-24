@@ -276,6 +276,9 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
     if blockid != -1:
         config_dict["blockid"] = blockid
 
+    print(config_dict)
+    sys.stdout.flush()
+
     maps = []
     date = []
     time = []
