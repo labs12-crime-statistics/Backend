@@ -121,15 +121,15 @@ def get_tips(config_dict):
     future_d = crime_future.sum((0,2))
     future_h = crime_future.sum((0,1))
 
-    future_m = future_m - future_m.mean()
-    future_d = future_d - future_d.mean()
-    future_h = future_h - future_h.mean()
+    future_m = (future_m - future_m.mean()) * 12
+    future_d = (future_d - future_d.mean()) * 7
+    future_h = (future_h - future_h.mean()) * 24
 
-    print(crime_future.sum(), crime_block_curr)
+    print(0.000001 * crime_future.sum(), crime_block_curr)
     sys.stdout.flush()
 
     crime_change_past = 0.2 * (crime_block_curr - crime_block_past) / crime_block_past
-    crime_change_pred = (0.001 * crime_future.sum() - crime_block_curr) / crime_block_curr
+    crime_change_pred = (0.000001 * crime_future.sum() - crime_block_curr) / crime_block_curr
     std_val = (crime_block_curr - crime_all_curr) / crime_all_std
 
     result = {
