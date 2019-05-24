@@ -70,7 +70,7 @@ def get_tips(config_dict):
             AND incident.year = 2014
             AND block.id = {config_dict['blockid']};
     """
-    crime_block_past = SESSION.execute(text(query)).fetchone()[0]
+    crime_block_past = float(SESSION.execute(text(query)).fetchone()[0])
 
     query = f"""
         SELECT
@@ -83,7 +83,7 @@ def get_tips(config_dict):
             AND incident.year = 2018
             AND block.id = {config_dict['blockid']};
     """
-    crime_block_curr = SESSION.execute(text(query)).fetchone()[0]
+    crime_block_curr = float(SESSION.execute(text(query)).fetchone()[0])
     
     query = """
         SELECT
@@ -97,7 +97,7 @@ def get_tips(config_dict):
             AND incident.cityid = 1
             AND incident.year = 2018;
     """
-    crime_all_curr = SESSION.execute(text(query)).fetchone()[0]
+    crime_all_curr = float(SESSION.execute(text(query)).fetchone()[0])
 
     query = """
         SELECT STDDEV(count_block)
@@ -114,7 +114,7 @@ def get_tips(config_dict):
                 incident.blockid
         ) AS count_all;
     """
-    crime_all_std = SESSION.execute(text(query)).fetchone()[0]
+    crime_all_std = float(SESSION.execute(text(query)).fetchone()[0])
 
     crime_future = np.frombuffer(bytes.fromhex(crime_future), dtype=np.float64).reshape((12,7,24))
     future_m = crime_future.sum((1,2))
