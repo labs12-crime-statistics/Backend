@@ -126,7 +126,7 @@ def get_tips(config_dict):
     future_h = (future_h - future_h.mean()) * 24
 
     crime_change_past = 0.2 * (crime_block_curr - crime_block_past) / crime_block_past
-    crime_change_pred = (0.000001 * crime_future.sum() - crime_block_curr) / crime_block_curr
+    crime_change_pred = (0.001 * crime_future.sum() - crime_block_curr) / crime_block_curr
     std_val = (crime_block_curr - crime_all_curr) / crime_all_std
 
     result = {
@@ -343,7 +343,7 @@ def get_data(config_dict, blockid, dotw, crimeviolence, crimeppos, locgroups):
         result["main"]["Block "+str(blockid)] = {}
         dows = [{"x": i, "y": 0.0} for i in range(7)]
         pd.read_sql_query(charts["dotw"], CONN).apply(funcs["dotw"], axis=1)
-        for d in dow:
+        for c in dow:
             dows[c["dow"]]["y"] = c["severity"]
         result["main"]["Block "+str(blockid)]["values_dow"] = [{"x": -1, "y": dows[-1]["y"]}] + dows + [{"x": 7, "y": dows[0]["y"]}]
         job = Job(result=json.dumps(result), datetime=datetime.datetime.utcnow())
